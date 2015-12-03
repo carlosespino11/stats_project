@@ -12,4 +12,5 @@ glimpse(flights)
 cancellations_month = flights %>% group_by(Month, UniqueCarrier) %>% 
   summarize(sum_canc = sum(Cancelled)) %>% arrange( desc(UniqueCarrier)) %>% 
 
-ggplot(cancellations_month) + geom_line(aes(x=Month, y = sum_canc, color = UniqueCarrier))
+ggplot(cancellations_month) + geom_line(aes(x=Month, y = sum_canc, color = UniqueCarrier)) + 
+  scale_x_continuous(breaks=1:12)
