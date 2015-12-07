@@ -9,16 +9,29 @@ flights <- read_csv("2008.csv")
 airports <- read.csv('airport_data/airports.dat', header=FALSE, sep=",")
 colnames = c("Airport_ID","Name","City","Country","IATA","ICAO","Latitude","Longitude","Altitude","Timezone","DST","Tz_database_time_zone")
 
+# Labels the columns where they're coming from
 airports.origin = airports
 airports.dest = airports
 colnames(airports.origin) = paste('Origin', colnames, sep=".")
 colnames(airports.dest) = paste('Dest', colnames, sep=".")
 col.index = c(2,3,4,5,7,8)
 
+# Change IATA codes to characters
 airports.origin$Origin.IATA = as.character(levels(airports.origin$Origin.IATA))[airports.origin$Origin.IATA]
 airports.dest$Origin.IATA = as.character(levels(airports.dest$Dest.IATA))[airports.dest$Dest.IATA]
+
+# Left join using the IATA codes
 flights = dplyr::left_join(flights, airports.origin[,col.index], by = c("Origin" = "Origin.IATA"))
 flights = dplyr::left_join(flights, airports.dest[,col.index], by = c("Dest" = "Dest.IATA"))
+
+# Created MeanDelay variable
+flights = cbind(flights, (flights$ArrDelay + flights$DepDelay)/2)
+names(flights)[ncol(flights)] <- "MeanDelay"
+
+# Create factor for delay
+DelayYesNo = ifelse(flights$MeanDelay>0, "Yes", "No")
+flights = cbind(flights, DelayYesNo)
+
 
 # Name	Description
 #1	Year	1987-2008
