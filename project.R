@@ -34,8 +34,11 @@ origins = flights %>% group_by(Origin) %>% summarise(count = n())
 
 flights %>% filter(!is.na(delay20)) %>%group_by(UniqueCarrier) %>% summarise(mean(delay20))
 
-delay_dist=  ggplot(flights) + geom_point(aes(y = ArrDelay, x = Distance, colour= UniqueCarrier))
-ggsave( "delay_dist.pdf", delay_dist)
+delay_dist=  ggplot(flights) + geom_point(aes(y = ArrDelay, x = Distance, colour= UniqueCarrier), alpha=.5)+
+  geom_smooth(aes(y = ArrDelay, x = Distance)) +
+  scale_size_area()
+
+ggsave( "delay_dist.png", delay_dist, scale=2) 
 ## MAIL FROM MOTTA
 
 #chapters from the book:
