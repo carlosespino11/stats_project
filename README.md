@@ -1,4 +1,2 @@
-# stats_project
-STATW4702 Final Project 
-
+# STAT 4702 Project
 We have to expand this!
