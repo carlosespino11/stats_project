@@ -70,3 +70,9 @@ ggplot(cancellations_month) + geom_line(aes(x=Month, y = sum_canc, color = Uniqu
 # 7.5 Smoothing Splines
 # 7.6 Local Regression
 # 7.7 Generalized Additive Models
+
+#chap 8-9
+#8 Optimal Test of Hypotheses
+#9 Inferences About Normal Models
+
+
