@@ -23,9 +23,7 @@ ggplot(cancellations_month) + geom_line(aes(x=Month, y = sum_canc, color = Uniqu
 #You can definitely apply other methods as well (logistic regression, bootstrap, etc).
 #If you have questions about R, please feel free to e-mail the TA or attend his office hours. 
 
-
-
 #Number pages: min 15 max 20. Format for submission: pdf or word. 
-
-#Number of students per group: min 3 max 4. E-mail (as soon as possible) me if#you are not yet part of a team.
+#Number of students per group: min 3 max 4. E-mail (as soon as possible) me if
+#you are not yet part of a team.
 
