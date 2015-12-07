@@ -15,7 +15,7 @@ summary(flights)
 glimpse(flights)
 
 cancellations_by_month = flights %>% group_by(Month) %>% 
-  summarize(sum_canc = sum(Cancelled), flights_n = n()) %>% mutate(cancelled_ratio = sum_canc/flights_n) 
+  summarize(sum_canc = sum(as.numeric(Cancelled)), flights_n = n()) %>% mutate(cancelled_ratio = sum_canc/flights_n) 
 
 ggplot(cancellations_by_month) + geom_line(aes(x=Month, y = sum_canc)) + 
   scale_x_continuous(breaks=1:12) + ylab("Cancellations")
@@ -23,8 +23,9 @@ ggplot(cancellations_by_month) + geom_line(aes(x=Month, y = sum_canc)) +
 
 origins = flights %>% group_by(Origin) %>% summarise(count = n())
 
-
 flights %>% filter(!is.na(delay20)) %>%group_by(UniqueCarrier) %>% summarise(mean(delay20))
+
+
 ## MAIL FROM MOTTA
 
 #chapters from the book:
@@ -84,5 +85,31 @@ flights %>% filter(!is.na(delay20)) %>%group_by(UniqueCarrier) %>% summarise(mea
 #chap 8-9
 #8 Optimal Test of Hypotheses
 #9 Inferences About Normal Models
+
+# we define a new variable called Long_short if the distance is higher than the median.
+Long_short <- rep('LONG', length(flights$Distance))
+Long_short[flights$Distance>median(flights$Distance)] <- 'SHORT'
+flights$Long_short <- Long_short
+
+#One Way Analysis of Variance
+#Example 1: 
+# we compare the delay20 variable with the long short variable defined before
+aov.ex1= aov(delay20~Long_short,data=flights)
+
+summary(aov.ex1)
+
+#the p-value shows that the H0 mu_long <> mu_short
+
+#The coefficients are:
+c <- coefficients(aov.ex1)
+
+#the model is determined by c(1) + c(2)*Short(binary variable takes 1 when it is short) + Error
+#short is more likely to be delayed than long.
+
+
+##
+tapply(as.numeric(flights$delay20), as.factor(flights$Long_short), FUN=mean)
+
+summary(aov.ex1)  
 
 
