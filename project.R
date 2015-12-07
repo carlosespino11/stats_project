@@ -1,19 +1,21 @@
 library(dplyr)
 library(ggplot2)
+library(data.table)
 
-setwd("~/Downloads/")
+setwd("~/Documents/Columbia/Statistical Inference and Modeling/stats_project/")
 
-flights <- read.csv("2008.csv") %>% tbl_df()
+flights <-fread("2008.csv") %>% tbl_df()
 
 flights
 
 glimpse(flights)
 
 cancellations_month = flights %>% group_by(Month, UniqueCarrier) %>% 
-  summarize(sum_canc = sum(Cancelled)) %>% arrange( desc(UniqueCarrier)) %>% 
+  summarize(sum_canc = sum(Cancelled)) %>% arrange( desc(UniqueCarrier))
 
 ggplot(cancellations_month) + geom_line(aes(x=Month, y = sum_canc, color = UniqueCarrier)) + 
   scale_x_continuous(breaks=1:12)
+
 
 #chapters from the book:
 #The final project is due on December 15 before 7:40pm. 
@@ -26,4 +28,5 @@ ggplot(cancellations_month) + geom_line(aes(x=Month, y = sum_canc, color = Uniqu
 #Number pages: min 15 max 20. Format for submission: pdf or word. 
 #Number of students per group: min 3 max 4. E-mail (as soon as possible) me if
 #you are not yet part of a team.
+
 
