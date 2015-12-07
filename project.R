@@ -1,22 +1,25 @@
 library(dplyr)
 library(ggplot2)
 library(data.table)
+library(readr)
 
-setwd("~/Documents/Columbia/Statistical Inference and Modeling/stats_project/")
-
-flights <-fread("2008.csv") %>% tbl_df()
+flights <- read_csv("2008.csv")
 
 flights
 
 glimpse(flights)
 
-cancellations_month = flights %>% group_by(Month, UniqueCarrier) %>% 
-  summarize(sum_canc = sum(Cancelled)) %>% arrange( desc(UniqueCarrier))
+cancellations_by_month = flights %>% group_by(Month) %>% 
+  summarize(sum_canc = sum(Cancelled), flights_n = n()) %>% mutate(cancelled_ratio = sum_canc/flights_n) 
 
-ggplot(cancellations_month) + geom_line(aes(x=Month, y = sum_canc, color = UniqueCarrier)) + 
-  scale_x_continuous(breaks=1:12)
+ggplot(cancellations_by_month) + geom_line(aes(x=Month, y = sum_canc)) + 
+  scale_x_continuous(breaks=1:12) + ylab("Cancellations")
+
+
+origins = flights %>% group_by(Origin) %>% summarise(count = n())
 
 ## MAIL FROM MOTTA
+
 #chapters from the book:
 #The final project is due on December 15 before 7:40pm. 
 #Please e-mail your project directly to the TA.
