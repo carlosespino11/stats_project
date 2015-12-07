@@ -2,11 +2,19 @@ library(dplyr)
 library(ggplot2)
 library(data.table)
 library(readr)
+library(lubridate)
 
-flights <- read_csv("2008.csv")
+flights <- read_csv("airport_data/2008.csv")
 flights$Cancelled = as.factor(flights$Cancelled)
 
-flights = flights %>% mutate(delay20 = ifelse(ArrDelay>20, TRUE, FALSE)) %>% filter(!is.na(ArrDelay) & !is.na(DepDelay))
+flights = flights %>% mutate(delay20 = ifelse(ArrDelay>20, TRUE, FALSE)) %>% 
+  filter(!is.na(ArrDelay) & !is.na(DepDelay))  %>%
+  mutate(weekday = DayOfWeek %in% 1:5,
+         morningTakeOff = am(hm(CRSDepTime) ),
+         Long_short = ntile(Distance,2) - 1 )
+
+
+#flights$Long_short <- flights$Distance>median(flights$Distance)
 
 flights %>% filter(!is.na(delay20)) %>%group_by(UniqueCarrier) %>% summarise(mean(delay20))
 
@@ -25,6 +33,9 @@ origins = flights %>% group_by(Origin) %>% summarise(count = n())
 
 
 flights %>% filter(!is.na(delay20)) %>%group_by(UniqueCarrier) %>% summarise(mean(delay20))
+
+delay_dist=  ggplot(flights) + geom_point(aes(y = ArrDelay, x = Distance, colour= UniqueCarrier))
+ggsave( "delay_dist.pdf", delay_dist)
 ## MAIL FROM MOTTA
 
 #chapters from the book:
