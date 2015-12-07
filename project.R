@@ -5,6 +5,10 @@ library(readr)
 
 flights <- read_csv("2008.csv")
 
+# Airport data
+airports <- read.csv('airport_data/airports_data.csv', header=FALSE, sep=",")
+colnames(airports) <- c("Airport_ID","Name","City","Country","IATA","ICAO","Latitude","Longitude","Altitude","Timezone","DST","Tz_database_time_zone")
+
 flights
 
 glimpse(flights)
