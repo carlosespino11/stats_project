@@ -4,8 +4,13 @@ library(data.table)
 library(readr)
 
 flights <- read_csv("2008.csv")
+flights$Cancelled = as.factor(flights$Cancelled)
 
-flights
+flights = flights %>% mutate(delay20 = ifelse(ArrDelay>20, TRUE, FALSE)) %>% filter(!is.na(ArrDelay) & !is.na(DepDelay))
+
+flights %>% filter(!is.na(delay20)) %>%group_by(UniqueCarrier) %>% summarise(mean(delay20))
+
+summary(flights)
 
 glimpse(flights)
 
@@ -18,6 +23,8 @@ ggplot(cancellations_by_month) + geom_line(aes(x=Month, y = sum_canc)) +
 
 origins = flights %>% group_by(Origin) %>% summarise(count = n())
 
+
+flights %>% filter(!is.na(delay20)) %>%group_by(UniqueCarrier) %>% summarise(mean(delay20))
 ## MAIL FROM MOTTA
 
 #chapters from the book:
