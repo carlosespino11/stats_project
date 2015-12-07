@@ -14,3 +14,6 @@ cancellations_month = flights %>% group_by(Month, UniqueCarrier) %>%
 
 ggplot(cancellations_month) + geom_line(aes(x=Month, y = sum_canc, color = UniqueCarrier)) + 
   scale_x_continuous(breaks=1:12)
+
+#HOLAAAAAA!!! viva el HUB! 
+#suckers
