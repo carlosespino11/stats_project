@@ -63,3 +63,24 @@ flights = cbind(flights, DelayYesNo)
 #27	NASDelay	in minutes
 #28	SecurityDelay	in minutes
 #29	LateAircraftDelay	in minutes
+train <- sample(c(T,F),size=50000,prob=c(0.2,0.8),replace=T)
+
+flights.train <- flights[train,]
+flights.test <- flights[!train,]
+
+library(rpart)
+library(rpart.plot)
+library(caret)
+
+
+fit <- rpart(DelayYesNo~DayOfWeek+UniqueCarrier+Distance+Long_short+ Month + DayofMonth + DepTime + Origin.Latitude + Origin.Longitude
+      + Dest.Longitude + Dest.Latitude, data=flights.train)
+
+rpart.plot(fit)
+
+pred <- predict(fit,newdata=flights.test, type="class")
+act <- flights.test$DelayYesNo
+confusionMatrix(pred,act)
+
+
+

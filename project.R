@@ -122,6 +122,9 @@ c <- coefficients(aov.ex1)
 ##
 tapply(as.numeric(flights$delay20), as.factor(flights$Long_short), FUN=mean)
 
-summary(aov.ex1)  
+#Example 2:
+# we compare the delay20 variable with the airline
+aov.ex2= aov(delay20~UniqueCarrier,data=flights)
+
 
 
