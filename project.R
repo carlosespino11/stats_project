@@ -38,7 +38,22 @@ delay_dist=  ggplot(flights) + geom_point(aes(y = ArrDelay, x = Distance, colour
   scale_size_area()
 
 ggsave( "delay_dist.png", delay_dist, scale=2) 
-## MAIL FROM MOTTA
+
+
+## Polynomial regression
+poly.2.fit=lm(ArrDelay ~ poly(AirTime,2),data=flights)
+poly.3.fit=lm(ArrDelay ~ poly(AirTime,3),data=flights)
+poly.4.fit=lm(ArrDelay ~ poly(AirTime,4),data=flights)
+poly.5.fit=lm(ArrDelay ~ poly(AirTime,5),data=flights)
+poly.6.fit=lm(ArrDelay ~ poly(AirTime,12),data=flights)
+anova(poly.2.fit,poly.3.fit,poly.4.fit,poly.4.fit,poly.5.fit,poly.6.fit)
+
+
+## Multivariate polynomial regression
+poly.4.multi.fit=lm(ArrDelay ~ poly(AirTime ,4) + poly(DepTime, 4),data=flights)
+poly.4.multi.fit=lm(ArrDelay ~ poly(AirTime ,4) + poly(DepDelay, 4),data=flights)
+
+## MAIL FROM GIOVANNI MOTTA
 
 #chapters from the book:
 #The final project is due on December 15 before 7:40pm. 
