@@ -2,6 +2,7 @@
 library(ISLR)
 library(leaps)
 library(GGally)
+library(rpart)
 
 setwd("~/Google Drive/Data Science/Courses/Fall 2015/Statistical Inference & Modelling/Homework/Group Project/")
 #dataset <- readRDS("Crime.rds")
@@ -46,6 +47,7 @@ dataset$crmrte_cat[dataset$crmrte  > median(dataset$crmrte)] <- "high"
 par(mfrow=c(1,1) )
 hist(crmrte)
 
+#histogram of the log of the response.
 hist(log(crmrte))
 
 #we trace paired boxplots for all the variables
@@ -101,10 +103,12 @@ fit.anova
 #compare the means
 tapply(crmrte,region_w_nw, mean)
 
+#anova using two categorical values
 fit.anova2 <- aov(crmrte ~ region_w_nw + smsa, data=dataset)
 summary(fit.anova2)
 fit.anova2
 
+#anova using two categorical values and their interaction
 fit.anova3 <- aov(crmrte ~ region_w_nw + smsa + region_w_nw:smsa, data=dataset)
 summary(fit.anova3)
 fit.anova3
@@ -117,8 +121,7 @@ fit.anova3
 #identical distribution OK
 #continuity OK
 
-
-#sign test
+#A. sign test
 med <- median(crmrte)
 n <- length(crmrte)
 x <- crmrte-med
@@ -134,7 +137,7 @@ for (i in 1:4){
   print(c(perc[i],'inf:',sort(crmrte)[k[i]], '--sup:',sort(crmrte)[n-k[i]+1],'/n'))
 }
 
-#wilcoxson
+#B. wilcoxson
 #Assumptions:
 #independence
 #identical distribution
@@ -146,6 +149,7 @@ crmrte_l <- log(crmrte)
 wct <- wilcox.test(crmrte_l, conf.int = TRUE)
 exp(wct$conf.int)
 wct$p.value
+
 
 crmrtepairs(crime)
 lm.fit = lm(crmrte ~ ., data = dataset)
