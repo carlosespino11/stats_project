@@ -46,4 +46,6 @@ for (i in 1:p) {
 }
 which.min(val.train.errors)
 
+lm.2.fit = lm(crmrte ~  prbarr + prbconv + polpc + density + as.factor(region) + pctmin + wfed + pctymle, data = dataset)
+summary(lm.2.fit)
 
