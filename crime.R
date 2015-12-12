@@ -3,7 +3,7 @@ library(leaps)
 library(glmnet)
 
 ###################################
-# Dataset creation
+# Crime creation
 ###################################
 
 Crime <- read.csv("Crime.csv")
@@ -59,17 +59,17 @@ which.min(val.train.errors)
 lm.2.fit = lm(crmrte ~  prbarr + prbconv + polpc + density + as.factor(region) + pctmin + wfed + pctymle, data = Crime)
 summary(lm.2.fit)
 
-lm.3.fit = lm(crmrte ~  log(prbarr) + log(prbconv) + log(polpc) + density + as.factor(region) + pctmin + poly(wfed,3) + pctymle, data = dataset)
+lm.3.fit = lm(crmrte ~  log(prbarr) + log(prbconv) + log(polpc) + density + as.factor(region) + pctmin + poly(wfed,3) + pctymle, data = Crime)
 summary(lm.3.fit)
 
-lm.4.fit = lm(crmrte ~  .*., data = dataset)
+lm.4.fit = lm(crmrte ~  .*., data = Crime)
 summary(lm.4.fit)
 
 fitnames = c("prbarr" , "prbconv" , "polpc" , "density" , "as.factor(region)" , "pctmin" , "wfed" , "pctymle", "crmrte")
-pairs(dataset[names(dataset) %in% fitnames])
+pairs(Crime[names(Crime) %in% fitnames])
 anova(lm.2.fit)
 
-lm.5.fit = lm(crmrte ~  log(prbarr) + log(prbconv) + log(polpc) + density + as.factor(region) + pctmin + poly(wfed,3) + pctymle + .*., data = dataset)
+lm.5.fit = lm(crmrte ~  log(prbarr) + log(prbconv) + log(polpc) + density + as.factor(region) + pctmin + poly(wfed,3) + pctymle + .*., data = Crime)
 
 
 ###################################
@@ -90,7 +90,7 @@ val.test.errors
 ###################################
 
 formula = "~ log(prbconv) + log(polpc) + density + pctmin +   poly(wfed, 3) + pctymle + county + year + prbarr + prbconv +   prbpris + avgsen + polpc + taxpc + region + smsa + wcon +   wtuc + wtrd + wfir + wser + wmfg + wfed + wsta + wloc + mix +   county:year + county:avgsen + county:polpc + density:county +   pctmin:county + county:wcon + county:wtuc + county:wtrd +   county:wfir + county:wmfg + county:wsta + county:wloc + pctymle:county +   year:prbconv + year:prbpris + year:polpc + year:region +   year:smsa + pctmin:year + year:wtrd + year:wfir + year:wmfg +   year:wsta + year:mix + pctymle:year + prbarr:prbpris + prbarr:polpc +   density:prbarr + prbarr:region + pctmin:prbarr + prbarr:wcon +   prbarr:wtuc + prbarr:wtrd + prbarr:wfir + prbarr:wfed + prbconv:prbpris +   prbconv:polpc + prbconv:smsa + pctmin:prbconv + prbconv:wcon +   prbconv:wfir + prbconv:wser + prbconv:wmfg + prbconv:mix +   density:prbpris + prbpris:taxpc + prbpris:region + pctmin:prbpris +   prbpris:wcon + prbpris:wtrd + prbpris:wmfg + prbpris:wfed +   prbpris:wsta + prbpris:wloc + density:avgsen + avgsen:taxpc +   avgsen:region + avgsen:smsa + pctmin:avgsen + avgsen:wcon +   avgsen:wtrd + avgsen:wfir + avgsen:wser + avgsen:wfed + avgsen:mix +   pctymle:avgsen + polpc:region + polpc:smsa + pctmin:polpc +   polpc:wtuc + polpc:wtrd + polpc:wser + polpc:wmfg + polpc:wfed +   density:region + density:smsa + density:pctmin + density:wcon +   density:wtuc + density:wtrd + density:wsta + density:mix +   density:pctymle + taxpc:region + taxpc:smsa + pctmin:taxpc +   taxpc:wmfg + taxpc:wfed + taxpc:wsta + taxpc:wloc + region:smsa +   pctmin:region + region:wcon + region:wtuc + region:wtrd +   region:wfir + region:wser + region:wmfg + region:wfed + region:wsta +   region:wloc + region:mix + pctymle:region + pctmin:smsa +   smsa:wtuc + smsa:wtrd + smsa:wser + smsa:wmfg + smsa:wfed +   smsa:wsta + smsa:mix + pctymle:smsa + pctmin:wtrd + pctmin:wfir +   pctmin:wser + pctmin:wmfg + pctmin:wfed + pctmin:wsta + pctmin:wloc +   pctmin:mix + pctmin:pctymle + wcon:wtuc + wcon:wfir + wcon:wmfg +   wcon:wfed + wcon:wsta + wcon:mix + pctymle:wcon + wtuc:wsta +   wtuc:wloc + wtrd:wfir + wtrd:wmfg + wtrd:wsta + wtrd:mix +   wfir:wmfg + wfir:wfed + wfir:wsta + wfir:wloc + wfir:mix +   pctymle:wfir + wser:wmfg + wser:wfed + wser:wloc + wser:mix +   wmfg:wfed + pctymle:wmfg + wfed:wsta + wfed:wloc + wfed:mix +   wsta:wloc + wsta:mix + pctymle:wsta + pctymle:mix"
-xs_lasso = model.matrix(as.formula(formula), dataset)
+xs_lasso = model.matrix(as.formula(formula), Crime)
 xs_lasso_train = xs_lasso[-test,]
 xs_lasso_test = xs_lasso[test,]
 grid=10^seq(2,-4,length=100)
@@ -148,12 +148,12 @@ mean(abs((pred3$fit - crime.actual)/crime.actual))
 #################
 
 
-dataset <- Crime
+Crime <- Crime
 
 #A dataframe containing:
 #X: index
 #Action: remove it
-dataset$X <- NULL
+Crime$X <- NULL
 
 #county: county identifier.
 
@@ -182,8 +182,8 @@ dataset$X <- NULL
 #pctymle: percentage of young males. PREDICTOR.
 
 #WE BUILD A CATEGORICAL VARIABLE WITH THE HIGHEST QUARTILE OF HIGH CRIME RATE
-dataset$crmrte_cat <- rep('low/normal', length(dataset$crmrte))
-dataset$crmrte_cat[dataset$crmrte  > median(dataset$crmrte)] <- "high"
+Crime$crmrte_cat <- rep('low/normal', length(Crime$crmrte))
+Crime$crmrte_cat[Crime$crmrte  > median(Crime$crmrte)] <- "high"
 
 #histogram of the response variable
 par(mfrow=c(1,1) )
@@ -194,64 +194,64 @@ hist(log(crmrte))
 
 #we trace paired boxplots for all the variables
 par(mfrow=c(2,3) )
-boxplot(prbarr~crmrte_cat,data=dataset, main='prbarr')
-boxplot(prbconv~crmrte_cat,data=dataset, main='prbconv')
-boxplot(prbpris~crmrte_cat,data=dataset, main='prbpris')
-boxplot(avgsen~crmrte_cat,data=dataset, main='avgsen')
-boxplot(polpc~crmrte_cat,data=dataset, main='polpc')
-boxplot(density~crmrte_cat,data=dataset, main='density')
+boxplot(prbarr~crmrte_cat,data=Crime, main='prbarr')
+boxplot(prbconv~crmrte_cat,data=Crime, main='prbconv')
+boxplot(prbpris~crmrte_cat,data=Crime, main='prbpris')
+boxplot(avgsen~crmrte_cat,data=Crime, main='avgsen')
+boxplot(polpc~crmrte_cat,data=Crime, main='polpc')
+boxplot(density~crmrte_cat,data=Crime, main='density')
 #conclusions: density may have a predictive value for high crime rates
 
 par(mfrow=c(2,3) )
-boxplot(taxpc~crmrte_cat,data=dataset, main='taxpc')
-boxplot(pctmin~crmrte_cat,data=dataset, main='pctmin')
-boxplot(wcon~crmrte_cat,data=dataset, main='wcon')
-boxplot(wtuc~crmrte_cat,data=dataset, main='wtuc')
-boxplot(wfir~crmrte_cat,data=dataset, main='wfir')
-boxplot(wser~crmrte_cat,data=dataset, main='wser')
+boxplot(taxpc~crmrte_cat,data=Crime, main='taxpc')
+boxplot(pctmin~crmrte_cat,data=Crime, main='pctmin')
+boxplot(wcon~crmrte_cat,data=Crime, main='wcon')
+boxplot(wtuc~crmrte_cat,data=Crime, main='wtuc')
+boxplot(wfir~crmrte_cat,data=Crime, main='wfir')
+boxplot(wser~crmrte_cat,data=Crime, main='wser')
 #pctmin may have a predictive value
 
 par(mfrow=c(2,3) )
-boxplot(wmfg~crmrte_cat,data=dataset, main='wmfg')
-boxplot(wfed~crmrte_cat,data=dataset, main='wfed')
-boxplot(wsta~crmrte_cat,data=dataset, main='wsta')
-boxplot(wloc~crmrte_cat,data=dataset, main='wloc')
-boxplot(mix~crmrte_cat,data=dataset, main='mix')
-boxplot(pctymle~crmrte_cat,data=dataset, main='pctymle')
+boxplot(wmfg~crmrte_cat,data=Crime, main='wmfg')
+boxplot(wfed~crmrte_cat,data=Crime, main='wfed')
+boxplot(wsta~crmrte_cat,data=Crime, main='wsta')
+boxplot(wloc~crmrte_cat,data=Crime, main='wloc')
+boxplot(mix~crmrte_cat,data=Crime, main='mix')
+boxplot(pctymle~crmrte_cat,data=Crime, main='pctymle')
 #'wfed' and 'wmfg' may have a predictive value
 
 #timeline of crime rate by year
-y1 <- table(dataset[dataset$crmrte_cat=='high','year'])
-y2 <- table(dataset[dataset$crmrte_cat!='high','year'])
+y1 <- table(Crime[Crime$crmrte_cat=='high','year'])
+y2 <- table(Crime[Crime$crmrte_cat!='high','year'])
 barplot(t(cbind(y1,y2)), legend=c('high','low/normal'))
 #no significance difference
 
-ggpairs(dataset[,c( 'region','crmrte_cat')])
+ggpairs(Crime[,c( 'region','crmrte_cat')])
 #candidate to test anova region west
 
-ggpairs(dataset[,c( 'smsa','crmrte_cat')])
+ggpairs(Crime[,c( 'smsa','crmrte_cat')])
 #smsa yes with high rate.
 
 #anova test with region: west/ other.
 # One Way Anova (Completely Randomized Design)
-dataset$crmrte_cat <- as.factor(dataset$crmrte_cat)
-dataset$region_w_nw <- rep('nw', length(dataset$crmrte_cat))
-dataset$region_w_nw[dataset$region=='west'] <- 'w'
-dataset$region_w_nw <- as.factor(dataset$region_w_nw)
+Crime$crmrte_cat <- as.factor(Crime$crmrte_cat)
+Crime$region_w_nw <- rep('nw', length(Crime$crmrte_cat))
+Crime$region_w_nw[Crime$region=='west'] <- 'w'
+Crime$region_w_nw <- as.factor(Crime$region_w_nw)
 
-fit.anova <- aov(crmrte ~ region_w_nw, data=dataset)
+fit.anova <- aov(crmrte ~ region_w_nw, data=Crime)
 summary(fit.anova)
 fit.anova
 #compare the means
 tapply(crmrte,region_w_nw, mean)
 
 #anova using two categorical values
-fit.anova2 <- aov(crmrte ~ region_w_nw + smsa, data=dataset)
+fit.anova2 <- aov(crmrte ~ region_w_nw + smsa, data=Crime)
 summary(fit.anova2)
 fit.anova2
 
 #anova using two categorical values and their interaction
-fit.anova3 <- aov(crmrte ~ region_w_nw + smsa + region_w_nw:smsa, data=dataset)
+fit.anova3 <- aov(crmrte ~ region_w_nw + smsa + region_w_nw:smsa, data=Crime)
 summary(fit.anova3)
 fit.anova3
 
