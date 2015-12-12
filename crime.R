@@ -84,10 +84,12 @@ lasso_rse / val.test.errors[which.min(val.test.errors)] * 100
 
 mean(abs((ys_test - ys_lasso_pred)/ ys_test))
 
-###################################
+######################################################################
 # Splines
-###################################
+######################################################################
 library(splines)
+
+# Sort for plotting later
 newdata.pctmin = sort(Crime[test,]$pctmin, index.return=TRUE)
 crime.actual = (Crime[test,]$crmrte)[newdata.pctmin$ix]
 
@@ -104,7 +106,16 @@ lines(newdata.pctmin$x, pred$fit-2*pred$se, lty="dashed")
 # (1/length(crime.actual)) * sum((pred$fit - crime.actual)^2) # MSE
 mean(abs((pred$fit - crime.actual)/crime.actual)) # Percent error
 
-# $pctmin with other
+# $pctmin spline with $density, prbarr, wfed
 fit.splines.2 = lm(crmrte~bs(pctmin, knots=pctmin.knots)+density+prbarr+wfed, data=Crime[-test,])
 pred2 = predict(fit.splines.2, newdata=(Crime[test,])[newdata.pctmin$ix,], se.fit=T)
 mean(abs((pred2$fit - crime.actual)/crime.actual))
+
+# $pctmin spline with Diego's predictors
+fit.splines.3 = lm(crmrte~bs(pctmin, knots=pctmin.knots)+log(prbconv) + log(polpc) + prbarr + density:county + prbarr:prbpris + pctmin:polpc + polpc:wfed + density:pctmin + density:pctymle + taxpc:wfed + region:wsta, data=Crime[-test,])
+pred3 = predict(fit.splines.3, newdata=(Crime[test,])[newdata.pctmin$ix,], se.fit=T)
+mean(abs((pred3$fit - crime.actual)/crime.actual))
+
+#################
+# Comparison without splines
+#################
