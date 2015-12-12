@@ -1,18 +1,12 @@
-
-
-
 library(ISLR)
 library(leaps)
+Crime <- read.csv("Crime.csv")
 
-setwd("~/Google Drive/Data Science/Courses/Fall 2015/Statistical Inference & Modelling/Homework/Group Project/")
-dataset <- readRDS("Crime.rds")
-#pairs(dataset_white)
-
-lm.fit = lm(crmrte ~ ., data = dataset)
+lm.fit = lm(crmrte ~ ., data = Crime)
 test = sample(530,100)
 test
-xs = dataset[-which(names(dataset) %in% c("crmrte"))]
-ys = dataset[which(names(dataset) %in% c("crmrte"))]
+xs = Crime[-which(names(Crime) %in% c("crmrte"))]
+ys = Crime[which(names(Crime) %in% c("crmrte"))]
 xs_test = xs[test,]
 xs_train = xs[-test,]
 ys_test = ys[test,]
@@ -36,8 +30,6 @@ for (i in 1:p) {
 }
 which.min(val.test.errors)
 
-
-
 for (i in 1:p) {
   coefi = coef(bestsubset, id = i)
   pred = as.matrix(xs_train[, x_cols %in% names(coefi)]) %*% coefi[names(coefi) 
@@ -46,6 +38,6 @@ for (i in 1:p) {
 }
 which.min(val.train.errors)
 
-lm.2.fit = lm(crmrte ~  prbarr + prbconv + polpc + density + as.factor(region) + pctmin + wfed + pctymle, data = dataset)
+lm.2.fit = lm(crmrte ~  prbarr + prbconv + polpc + density + as.factor(region) + pctmin + wfed + pctymle, data = Crime)
 summary(lm.2.fit)
 
