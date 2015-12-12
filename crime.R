@@ -1,17 +1,22 @@
 library(ISLR)
 library(leaps)
-Crime <- read.csv("Crime.csv")
 library(glmnet)
 
-lm.fit = lm(crmrte ~ ., data = Crime)
-test = sample(530,100)
-test
+Crime <- read.csv("Crime.csv")
+Crime = Crime[,-1]
+
+set.seed(1)
+test = sample(nrow(Crime), nrow(Crime)*.2)
+#test = sample(530,100)
+
 xs = Crime[-which(names(Crime) %in% c("crmrte"))]
 ys = Crime[which(names(Crime) %in% c("crmrte"))]
 xs_test = xs[test,]
 xs_train = xs[-test,]
 ys_test = ys[test,]
 ys_train = ys[-test,]
+
+lm.fit = lm(crmrte ~ ., data = Crime)
 bestsubset=regsubsets(y ~ ., data = data.frame(y = ys_train, x = xs_train), nvmax = 23)
 
 p = 23
@@ -79,5 +84,27 @@ lasso_rse / val.test.errors[which.min(val.test.errors)] * 100
 
 mean(abs((ys_test - ys_lasso_pred)/ ys_test))
 
+###################################
+# Splines
+###################################
+library(splines)
+newdata.pctmin = sort(Crime[test,]$pctmin, index.return=TRUE)
+crime.actual = (Crime[test,]$crmrte)[newdata.pctmin$ix]
 
+# Only $pctmin
+pctmin.knots = attr(bs(Crime$pctmin, df=10), "knots")
+fit.splines = lm(crmrte~bs(pctmin, knots=pctmin.knots), data=Crime[-test,])
+pred = predict(fit.splines, newdata=list(pctmin = newdata.pctmin$x), se.fit=T)
 
+plot(Crime$pctmin,Crime$crmrte,col="gray")
+lines(newdata.pctmin$x, pred$fit, lwd=2)
+lines(newdata.pctmin$x, pred$fit+2*pred$se, lty="dashed")
+lines(newdata.pctmin$x, pred$fit-2*pred$se, lty="dashed")
+
+# (1/length(crime.actual)) * sum((pred$fit - crime.actual)^2) # MSE
+mean(abs((pred$fit - crime.actual)/crime.actual)) # Percent error
+
+# $pctmin with other
+fit.splines.2 = lm(crmrte~bs(pctmin, knots=pctmin.knots)+density+prbarr+wfed, data=Crime[-test,])
+pred2 = predict(fit.splines.2, newdata=(Crime[test,])[newdata.pctmin$ix,], se.fit=T)
+mean(abs((pred2$fit - crime.actual)/crime.actual))
