@@ -3,6 +3,8 @@ library(leaps)
 library(glmnet)
 library(rpart.plot)
 library(caret)
+library(GGally)
+library(grid)
 
 ######################################################################
 # Setup
@@ -51,19 +53,31 @@ Crime$crmrte_cat[Crime$crmrte  > median(Crime$crmrte)] <- "high"
 
 #histogram of the response variable
 par(mfrow=c(1,1) )
-hist(crmrte)
+ggplot() + geom_density(aes(x = Crime$crmrte), alpha=.3, fill = "grey") + xlab("Crimes per person") +
+  theme_fivethirtyeight()
 
 #histogram of the log of the response.
-hist(log(crmrte))
+ggplot() + geom_density(aes(x = Crime$crmrte), alpha=.3, fill = "grey") + xlab("log(Crimes per person)") +
+  scale_x_log10() +
+  theme_fivethirtyeight()
 
 #we trace paired boxplots for all the variables
+
 par(mfrow=c(2,3) )
+boxplot_crmte_cat = function(data = Crime){
+  plot = ggplot(Crime) + geom_boxplot(aes(y = prbarr, x = crmrte_cat, fill=crmrte_cat)) + 
+        theme_fivethirtyeight()
+  return(plot)
+}
 boxplot(prbarr~crmrte_cat,data=Crime, main='prbarr')
 boxplot(prbconv~crmrte_cat,data=Crime, main='prbconv')
 boxplot(prbpris~crmrte_cat,data=Crime, main='prbpris')
 boxplot(avgsen~crmrte_cat,data=Crime, main='avgsen')
 boxplot(polpc~crmrte_cat,data=Crime, main='polpc')
 boxplot(density~crmrte_cat,data=Crime, main='density')
+
+multiplot(p1, p2, p3, p4, cols=2)
+
 #conclusions: density may have a predictive value for high crime rates
 
 par(mfrow=c(2,3) )
@@ -354,9 +368,8 @@ lines(newdata.pctmin$x, pred$fit-2*pred$se, lty="dashed")
 
 ggplot() + geom_point(aes(x = Crime$pctmin, y = Crime$crmrte), color="darkgrey") + 
   geom_ribbon(aes(x = newdata.pctmin$x, y = pred$fit, ymin= pred$fit-2*pred$se, ymax= pred$fit+2*pred$se), color="lightgrey", alpha =.15)+
-  geom_line(aes(x = newdata.pctmin$x, y = pred$fit), color="blue")+
+  geom_line(aes(x = newdata.pctmin$x, y = pred$fit), color="red")+
   geom_line(aes(x = newdata.pctmin$x, y = pred$fit+2*pred$se), linetype = "dashed") +
   geom_line(aes(x = newdata.pctmin$x, y = pred$fit-2*pred$se), linetype = "dashed") +
-  labs(x="Proportion of minority in 1980 (%)", y="Crimes committed per person") +
+  labs(x="Proportion of minority in 1980 (%)", y="Crimes committed per person", title="How is the crime rate related to the proportion of\n    minorities in the region?") +
   theme_fivethirtyeight()
-
