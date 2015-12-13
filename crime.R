@@ -3,6 +3,7 @@ library(leaps)
 library(glmnet)
 library(rpart.plot)
 library(caret)
+library(GGally)
 
 ######################################################################
 # Setup
@@ -51,10 +52,10 @@ Crime$crmrte_cat[Crime$crmrte  > median(Crime$crmrte)] <- "high"
 
 #histogram of the response variable
 par(mfrow=c(1,1) )
-hist(crmrte)
+hist(Crime$crmrte)
 
 #histogram of the log of the response.
-hist(log(crmrte))
+hist(log(Crime$crmrte))
 
 #we trace paired boxplots for all the variables
 par(mfrow=c(2,3) )
@@ -128,9 +129,9 @@ fit.anova3
 #continuity OK
 
 #A. sign test
-med <- median(crmrte)
-n <- length(crmrte)
-x <- crmrte-med
+med <- median(Crime$crmrte)
+n <- length(Crime$crmrte)
+x <- Crime$crmrte-med
 pos <- sum(x>0) 
 #p value 
 1 - pbinom(pos, n, 1 / 2)
@@ -140,7 +141,7 @@ k<- 260+c(23,30,35,38) # probabilities 99%; 95%; 88%; 81%;
 1 - 2 * pbinom(k, n, 1 / 2)
 perc <- c(0.99,0.95,0.88,0.81)
 for (i in 1:4){
-  print(c(perc[i],'inf:',sort(crmrte)[k[i]], '--sup:',sort(crmrte)[n-k[i]+1],'/n'))
+  print(c(perc[i],'inf:',sort(Crime$crmrte)[k[i]], '--sup:',sort(Crime$crmrte)[n-k[i]+1],'/n'))
 }
 
 #B. wilcoxson
@@ -150,7 +151,7 @@ for (i in 1:4){
 #continuity
 #symmetry
 #to achieve the symetry we work with the log(crime rate)
-crmrte_l <- log(crmrte)
+crmrte_l <- log(Crime$crmrte)
 #run the wilcox test
 wct <- wilcox.test(crmrte_l, conf.int = TRUE)
 exp(wct$conf.int)
@@ -160,19 +161,19 @@ wct$p.value
 test = sample(nrow(Crime), nrow(Crime)*.2)
 
 #decision tree
-fit <-rpart(crmrte_cat ~.,data=dataset[-test,-4])
+fit <-rpart(Crime$crmrte_cat ~.,data=dataset[-test,-4])
 rpplot(fit)
 pred.fit <- predict(fit,newdata=dataset[test,-4])
-pred.class <- rep('low/normal', length(crmrte_cat))
+pred.class <- rep('low/normal', length(Crime$crmrte_cat))
 pred.class[pred.fit[,'high']>0.5] <- 'high'
-confusionMatrix(pred.class,crmrte_cat)
+confusionMatrix(pred.class,Crime$crmrte_cat)
 
 #logistic regression
-fit.reg <-glm(crmrte_cat ~.,data=dataset[-test,-4], family=binomial)
+fit.reg <-glm(Crime$crmrte_cat ~.,data=dataset[-test,-4], family=binomial)
 pred.fit <- predict(fit.reg,newdata=dataset[test,-4], type='response')
-pred.class <- rep('low/normal', length(crmrte_cat))
+pred.class <- rep('low/normal', length(Crime$crmrte_cat))
 pred.class[pred.fit>0.5] <- 'high'
-confusionMatrix(pred.class,crmrte_cat)
+confusionMatrix(pred.class,Crime$crmrte_cat)
 fit.reg
 
 
@@ -181,8 +182,6 @@ fit.reg
 ######################################################################
 
 test = sample(nrow(Crime), nrow(Crime)*.2)
-#test = sample(530,100)
-
 xs = Crime[-which(names(Crime) %in% c("crmrte"))]
 ys = Crime[which(names(Crime) %in% c("crmrte"))]
 xs_test = xs[test,]
@@ -193,7 +192,7 @@ ys_train = ys[-test,]
 lm.fit = lm(crmrte ~ ., data = Crime)
 bestsubset=regsubsets(y ~ ., data = data.frame(y = ys_train, x = xs_train), nvmax = 23)
 
-p = 23
+
 
 set.seed(1)
 val.train.errors = rep(NA, p)
