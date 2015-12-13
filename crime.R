@@ -62,8 +62,7 @@ Crime$crmrte_cat <- ordered(Crime$crmrte_cat, levels = c("low/normal", "high"))
 #histogram of the response variable
 
 ggplot() + geom_density(aes(x = Crime$crmrte), alpha=.3, fill = "grey") + xlab("Crimes per person") +
-  theme_fivethirtyeight()
-
+  theme_fivethirtyeight() 
 #histogram of the log of the response.
 ggplot() + geom_density(aes(x = Crime$crmrte), alpha=.3, fill = "grey") + xlab("log(Crimes per person)") +
   scale_x_log10() +
@@ -103,7 +102,7 @@ grid.arrange(boxplot_crmte_cat(variable = "wmfg"), boxplot_crmte_cat("wfed"), bo
 #timeline of crime rate by year
 
 ggplot(Crime) + geom_bar(aes(x =factor(year), fill=crmrte_cat )) +
-  scale_fill_fivethirtyeight("cyl") + theme_fivethirtyeight()
+  scale_fill_fivethirtyeight("cyl") + theme_fivethirtyeight() + xlab("year")
 #no significance difference
 
 ggpairs(Crime[,c( 'region','crmrte_cat')])
