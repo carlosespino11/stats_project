@@ -351,7 +351,10 @@ lines(newdata.pctmin$x, pred$fit, lwd=2)
 lines(newdata.pctmin$x, pred$fit+2*pred$se, lty="dashed")
 lines(newdata.pctmin$x, pred$fit-2*pred$se, lty="dashed")
 
-ggplot() + geom_point(aes(x = Crime$pctmin, y = Crime$crmrte), color="darkgrey") + geom_line(aes(x = newdata.pctmin$x, y = pred$fit)) +
+ggplot() + geom_point(aes(x = Crime$pctmin, y = Crime$crmrte), color="darkgrey") + 
+  geom_line(aes(x = newdata.pctmin$x, y = pred$fit)) +
   geom_line(aes(x = newdata.pctmin$x, y = pred$fit+2*pred$se), linetype = "dashed") +
   geom_line(aes(x = newdata.pctmin$x, y = pred$fit-2*pred$se), linetype = "dashed") 
+
+
 
