@@ -152,7 +152,7 @@ wct <- wilcox.test(crmrte_l, conf.int = TRUE)
 exp(wct$conf.int)
 wct$p.value
 
-#fit some models
+#fit some models to explore which variables are related to the target
 test = sample(nrow(Crime), nrow(Crime)*.2)
 
 #decision tree
