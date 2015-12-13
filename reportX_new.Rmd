@@ -72,29 +72,35 @@ The dataset contains a total of 626 observations. 3 outliers were removed accord
 We analized the variables in the dataset starting with the target variable: 'crmrte', the crime rate. Along this study, we will use this variable in diferent forms. We define a categorical value equal to one representing high crime rate, when the value of the target variable is higher that its median value. Also, we will use the natural logarithm of the variable to adequately transform it be able to apply diferent statisticals models to predict and describe the data. The target variable behaviour is represented with a boxplot, a softened histogram and a softened histogram of the logarithm of the variable.
 
 ```{r, echo=FALSE}
-#WE BUILD A CATEGORICAL VARIABLE WITH THE HIGHEST QUARTILE OF HIGH CRIME RATE
 boxplot_crmte_cat = function(variable, data = Crime){
   plot_df= data.frame(y = data[,variable], x = data$crmrte_cat)
-  
   plot = ggplot(plot_df) + geom_boxplot(aes(y= y, x = x, fill=x)) + 
-        theme_fivethirtyeight() + labs(title = variable, x= "crmrte_cat", y = variable )
+        theme_fivethirtyeight() + labs(title = variable, x= "crmrte_cat", y = variable )+
+        scale_fill_fivethirtyeight("cyl")+
+        theme(legend.position="none")
   
   return(plot)
 }
 
 Crime$crmrte_cat <- rep('low/normal', length(Crime$crmrte))
 Crime$crmrte_cat[Crime$crmrte  > median(Crime$crmrte)] <- "high"
+Crime$crmrte_cat <- ordered(Crime$crmrte_cat, levels = c("low/normal", "high"))
 
-ggplot() + geom_boxplot(aes(x=1, y=Crime$crmrte))+ labs(title='boxplot - crime rate')
+boxplot = ggplot() + geom_boxplot(aes(x=factor(1), y=Crime$crmrte), alpha=.3, fill = "grey") + 
+  labs(title = 'boxplot - crime rate', y = "Crime Rate")+ 
+  theme_fivethirtyeight() +theme(axis.text.x = element_blank(), axis.text.x = element_blank(), axis.title.x = element_blank())
 
 #histogram of the response variable
-ggplot() + geom_density(aes(x = Crime$crmrte), alpha=.3, fill = "grey") + xlab("Crimes per person") +
-  theme_fivethirtyeight()
+densityplot = ggplot() + geom_density(aes(x = Crime$crmrte), alpha=.3, fill = "grey") + 
+  theme_fivethirtyeight()+ labs(title = 'density - crime rate', x = "Crime Rate")
 
 #histogram of the log of the response.
-ggplot() + geom_density(aes(x = Crime$crmrte), alpha=.3, fill = "grey") + xlab("log(Crimes per person)") +
+logdensity_plot = ggplot() + geom_density(aes(x = Crime$crmrte), alpha=.3, fill = "grey") + 
   scale_x_log10() +
-  theme_fivethirtyeight()
+  theme_fivethirtyeight() +
+  labs(title = "density - log(crime rate)", x = "log(crime rate)")
+
+grid.arrange(boxplot, densityplot, logdensity_plot, ncol=3)
 ```
 
 Besides the variable target, the dataset contains other 20 variables we used as predictors. Two of them have categorical values. The 'region' variable can have 3 possible values: 'other', 'west' or 'central' and the 'smsa' can have 'yes' or 'no'. The dataset also contains the 'year' variable which can be considered as a time reference. A short description of each variable can be found in the table above. Next, we plot some charts to explore the behaviour of the variables and their relation with the target.
@@ -124,12 +130,17 @@ ggplot(Crime) + geom_bar(aes(x =factor(year), fill=crmrte_cat )) +
 We comment on avobe plot that there is no sifnificance trend on the crime rate along the time line considered. The other two variables with categorical values are 'region' and 'smsa'.
 
 ```{r, echo=FALSE}
-ggpairs(Crime[,c( 'region','crmrte_cat')])+
-  theme_fivethirtyeight()
+
+
+crime_region = ggplot(Crime) + geom_bar(aes(x = crmrte_cat, fill = crmrte_cat)) + facet_grid(region~.)+
+  theme_fivethirtyeight()+ scale_fill_fivethirtyeight("cyl")  + labs(title = "Crime Rate by Region", x = "Crime Rate")
 #candidate to test anova region west
 
-ggpairs(Crime[,c( 'smsa','crmrte_cat')])+
-  theme_fivethirtyeight()
+crime_smsa = ggplot(Crime) + geom_bar(aes(x = crmrte_cat, fill = crmrte_cat)) + facet_grid(smsa~.)+
+  theme_fivethirtyeight()+ scale_fill_fivethirtyeight("cyl")  + labs(title = "Crime Rate by SMSA", x = "Crime Rate")
+
+grid.arrange(crime_region, crime_smsa, ncol=2)
+
 #smsa yes with high rate.
 ```
 
