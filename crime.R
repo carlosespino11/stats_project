@@ -3,13 +3,19 @@ library(leaps)
 library(glmnet)
 library(rpart.plot)
 library(caret)
+library(MASS)
 library(GGally)
 library(grid)
 library(ggplot2)
 library(gridExtra)
+library(splines)
+library(caret)
+library(knitr)
+
 ######################################################################
 # Setup
 ######################################################################
+load("ggthemes_data.rda")
 source("theme_fivethirtyeight.R")
 Crime <- read.csv("Crime.csv")
 Crime = Crime[,-1] # Remove the index column
@@ -20,7 +26,7 @@ bad = c(440,353,437,439)
 Crime = Crime[-bad,]
 
 ######################################################################
-# Xavi's code
+# Analysis of variables
 ######################################################################
 #A dataframe containing:
 #county: county identifier.
@@ -48,16 +54,16 @@ Crime = Crime[-bad,]
 #mix: offence mix: face-to-face/other. PREDICTOR.
 #pctymle: percentage of young males. PREDICTOR.
 
-par(mfrow=c(1,3) )
 #WE BUILD A CATEGORICAL VARIABLE WITH THE HIGHEST QUARTILE OF HIGH CRIME RATE
 Crime$crmrte_cat <- rep('low/normal', length(Crime$crmrte))
 Crime$crmrte_cat[Crime$crmrte  > median(Crime$crmrte)] <- "high"
+Crime$crmrte_cat <- ordered(Crime$crmrte_cat, levels = c("low/normal", "high"))
 
-boxplot(Crime$crmrte, main= 'Crimes per person')
+
 #histogram of the response variable
-ggplot() + geom_density(aes(x = Crime$crmrte), alpha=.3, fill = "grey") + xlab("Crimes per person") +
-  theme_fivethirtyeight()
 
+ggplot() + geom_density(aes(x = Crime$crmrte), alpha=.3, fill = "grey") + xlab("Crimes per person") +
+  theme_fivethirtyeight() 
 #histogram of the log of the response.
 ggplot() + geom_density(aes(x = Crime$crmrte), alpha=.3, fill = "grey") + xlab("log(Crimes per person)") +
   scale_x_log10() +
@@ -70,9 +76,10 @@ ggplot() + geom_density(aes(x = Crime$crmrte), alpha=.3, fill = "grey") + xlab("
 
 boxplot_crmte_cat = function(variable, data = Crime){
   plot_df= data.frame(y = data[,variable], x = data$crmrte_cat)
-  
   plot = ggplot(plot_df) + geom_boxplot(aes(y= y, x = x, fill=x)) + 
-        theme_fivethirtyeight() + labs(title = variable, x= "crmrte_cat", y = variable )
+        theme_fivethirtyeight() + labs(title = variable, x= "crmrte_cat", y = variable )+
+        scale_fill_fivethirtyeight("cyl")+
+        theme(legend.position="none")
   
   return(plot)
 }
@@ -94,15 +101,17 @@ grid.arrange(boxplot_crmte_cat(variable = "wmfg"), boxplot_crmte_cat("wfed"), bo
 #'wfed' and 'wmfg' may have a predictive value
 
 #timeline of crime rate by year
-y1 <- table(Crime[Crime$crmrte_cat=='high','year'])
-y2 <- table(Crime[Crime$crmrte_cat!='high','year'])
-barplot(t(cbind(y1,y2)), legend=c('high','low/normal'))
+
+ggplot(Crime) + geom_bar(aes(x =factor(year), fill=crmrte_cat )) +
+  scale_fill_fivethirtyeight("cyl") + theme_fivethirtyeight() + xlab("year")
 #no significance difference
 
-ggpairs(Crime[,c( 'region','crmrte_cat')])
+ggpairs(Crime[,c( 'region','crmrte_cat')])+
+  theme_fivethirtyeight()
 #candidate to test anova region west
 
-ggpairs(Crime[,c( 'smsa','crmrte_cat')])
+ggpairs(Crime[,c( 'smsa','crmrte_cat')])+
+  theme_fivethirtyeight()
 #smsa yes with high rate.
 
 #anova test with region: west/ other.
@@ -116,7 +125,7 @@ fit.anova <- aov(crmrte ~ region_w_nw, data=Crime)
 summary(fit.anova)
 fit.anova
 #compare the means
-tapply(crmrte,region_w_nw, mean)
+tapply(Crime$crmrte,Crime$region_w_nw, mean)
 
 #anova using two categorical values
 fit.anova2 <- aov(crmrte ~ region_w_nw + smsa, data=Crime)
@@ -169,16 +178,16 @@ wct$p.value
 test = sample(nrow(Crime), nrow(Crime)*.2)
 
 #decision tree
-fit <-rpart(Crime$crmrte_cat ~.,data=dataset[-test,-4])
-rpplot(fit)
-pred.fit <- predict(fit,newdata=dataset[test,-4])
+fit <-rpart(crmrte_cat ~.,data=Crime[-test,-3])
+prp(fit)
+pred.fit <- predict(fit,newdata=Crime[test,-3])
 pred.class <- rep('low/normal', length(Crime$crmrte_cat))
 pred.class[pred.fit[,'high']>0.5] <- 'high'
 confusionMatrix(pred.class,Crime$crmrte_cat)
 
 #logistic regression
-fit.reg <-glm(Crime$crmrte_cat ~.,data=dataset[-test,-4], family=binomial)
-pred.fit <- predict(fit.reg,newdata=dataset[test,-4], type='response')
+fit.reg <-glm(crmrte_cat ~.,data=Crime[-test,-3], family=binomial)
+pred.fit <- predict(fit.reg,newdata=Crime[test,-3], type='response')
 pred.class <- rep('low/normal', length(Crime$crmrte_cat))
 pred.class[pred.fit>0.5] <- 'high'
 confusionMatrix(pred.class,Crime$crmrte_cat)
@@ -190,28 +199,29 @@ fit.reg
 ######################################################################
 
 test = sample(nrow(Crime), nrow(Crime)*.2)
-xs = Crime[-which(names(Crime) %in% c("crmrte"))]
+excluded = c("crmrte", "crmrte_cat", "region_w_nw")
+xs = Crime[-which(names(Crime) %in% excluded)]
 ys = Crime[which(names(Crime) %in% c("crmrte"))]
 xs_test = xs[test,]
 xs_train = xs[-test,]
 ys_test = ys[test,]
 ys_train = ys[-test,]
-
+p = dim(xs)[2]
 lm.fit = lm(crmrte ~ ., data = Crime)
-bestsubset=regsubsets(y ~ ., data = data.frame(y = ys_train, x = xs_train), nvmax = 23)
+bestsubset=regsubsets(y ~ ., data = data.frame(y = ys_train, x = xs_train), nvmax = p)
 
 
 
-set.seed(1)
+
+######################################################################
+# Training and test errors for lm
+######################################################################
 val.train.errors = rep(NA, p)
 val.test.errors = rep(NA, p)
 x_cols = colnames(xs, do.NULL = FALSE, prefix = "x.")
 colnames(xs) <- paste("x", x_cols, sep = ".")
 x_cols = colnames(xs)
 
-######################################################################
-# Training and test errors for lm
-######################################################################
 
 for (i in 1:p) {
   coefi = coef(bestsubset, id = i)
@@ -220,6 +230,7 @@ for (i in 1:p) {
   val.test.errors[i] = mean((ys_test - pred)^2)
 }
 which.min(val.test.errors)
+val.test.errors[which.min(val.test.errors)]
 
 for (i in 1:p) {
   coefi = coef(bestsubset, id = i)
@@ -227,7 +238,9 @@ for (i in 1:p) {
                                                                    %in% x_cols]
   val.train.errors[i] = mean((ys_train - pred)^2)
 }
+
 which.min(val.train.errors)
+val.train.errors[which.min(val.train.errors)]
 
 ######################################################################
 # Logarithmic, interaction and polynomial fits
@@ -236,15 +249,14 @@ which.min(val.train.errors)
 lm.2.fit = lm(crmrte ~  prbarr + prbconv + polpc + density + as.factor(region) + pctmin + wfed + pctymle, data = Crime)
 summary(lm.2.fit)
 
+fitnames = c("prbarr" , "prbconv" , "polpc" , "density" , "as.factor(region)" , "pctmin" , "wfed" , "pctymle", "crmrte")
+pairs(Crime[names(Crime) %in% fitnames])
+
 lm.3.fit = lm(crmrte ~  log(prbarr) + log(prbconv) + log(polpc) + density + as.factor(region) + pctmin + poly(wfed,3) + pctymle, data = Crime)
 summary(lm.3.fit)
 
 lm.4.fit = lm(crmrte ~  .*., data = Crime)
 summary(lm.4.fit)
-
-fitnames = c("prbarr" , "prbconv" , "polpc" , "density" , "as.factor(region)" , "pctmin" , "wfed" , "pctymle", "crmrte")
-pairs(Crime[names(Crime) %in% fitnames])
-anova(lm.2.fit)
 
 lm.5.fit = lm(crmrte ~  log(prbarr) + log(prbconv) + log(polpc) + density + as.factor(region) + pctmin + poly(wfed,3) + pctymle + .*., data = Crime)
 
@@ -253,7 +265,6 @@ lm.5.fit = lm(crmrte ~  log(prbarr) + log(prbconv) + log(polpc) + density + as.f
 # AIC
 ######################################################################
 
-library(MASS)
 interaction.fit = stepAIC(lm.5.fit)
 
 coefi = coef(interaction.fit)
@@ -284,8 +295,6 @@ mean(abs((ys_test - ys_lasso_pred)/ ys_test))
 ######################################################################
 # Splines
 ######################################################################
-library(splines)
-library(caret)
 
 # To identify outliers
 # fit.all <- lm(crmrte~bs(pctmin, knots=pctmin.knots) + log(prbconv) + log(polpc) 
@@ -328,12 +337,12 @@ fit.splines.2 = lm(crmrte~bs(pctmin, knots=pctmin.knots)+density+prbarr+wfed, da
 pred2 = predict(fit.splines.2, newdata=(Crime[test,])[newdata.pctmin$ix,], se.fit=T)
 error.pctmin.plus = mean(abs((pred2$fit - crime.actual)/crime.actual))
 
-# $pctmin spline with Diego's predictors **********
+# $pctmin spline with linear regression predictors **********
 fit.splines.3 = lm(crmrte~bs(pctmin, knots=pctmin.knots) + log(prbconv) + log(polpc) + prbarr + density:county + prbarr:prbpris + pctmin:polpc + polpc:wfed + density:pctmin + density:pctymle + taxpc:wfed + region:wsta, data=Crime[-test,])
 pred3 = predict(fit.splines.3, newdata=(Crime[test,])[newdata.pctmin$ix,], se.fit=T)
 error.pctmin.overall = mean(abs((pred3$fit - crime.actual)/crime.actual))
 
-# $pctmin poly with Diego's predictors (for comp)
+# $pctmin poly with linear regression predictors (for comp)
 fit.poly.4 = lm(crmrte~poly(pctmin,4) + log(prbconv) + log(polpc) + prbarr + density:county + prbarr:prbpris + pctmin:polpc + polpc:wfed + density:pctmin + density:pctymle + taxpc:wfed + region:wsta, data=Crime[-test,])
 pred4 = predict(fit.poly.4, newdata=(Crime[test,])[newdata.pctmin$ix,], se.fit=T)
 error.pctmin.overall.poly = mean(abs((pred4$fit - crime.actual)/crime.actual))
