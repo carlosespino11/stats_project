@@ -258,8 +258,18 @@ library(caret)
 # k-Folds (k=10)
 folds <- createFolds(Crime$pctmin, k=10, list=TRUE, returnTrain=FALSE)
 
+# Identify outliers
+# fit.all <- lm(crmrte~bs(pctmin, knots=pctmin.knots) + log(prbconv) + log(polpc) + prbarr + density:county + prbarr:prbpris + pctmin:polpc + polpc:wfed + density:pctmin + density:pctymle + taxpc:wfed + region:wsta, data=Crime)
+bad = c(440,353,437,439)
+Crime = Crime[-bad,]
+
+# Split into training/test sets
+set.seed(1)
+test = sample(nrow(Crime), nrow(Crime)*.15)
+
 # Spline function
-pctmin.knots = attr(bs(Crime$pctmin, df=9), "knots")
+#pctmin.knots = attr(bs(Crime$pctmin, df=9), "knots")
+pctmin.knots = attr(smooth.spline(Crime$pctmin, cv=TRUE), "knots")
 
 # Sort for plotting later
 newdata.pctmin = sort(Crime[test,]$pctmin, index.return=TRUE)
@@ -296,20 +306,18 @@ fit.poly.4 = lm(crmrte~poly(pctmin,4) + log(prbconv) + log(polpc) + prbarr + den
 pred4 = predict(fit.poly.4, newdata=(Crime[test,])[newdata.pctmin$ix,], se.fit=T)
 error.pctmin.overall.poly = mean(abs((pred4$fit - crime.actual)/crime.actual))
 
-# k-Folds with everything
-df = seq(3, 50)
-results.overall = vector()
-for (j in 1:length(df)) {
-  pctmin.knots = attr(bs(Crime$pctmin, df=df[j]), "knots")
-  kfolds.results = vector()
-  for (i in 1:length(folds)) {
-    fit.splines <- lm(crmrte~bs(pctmin, knots=pctmin.knots) + log(prbconv) + log(polpc) + prbarr + density:county + prbarr:prbpris + pctmin:polpc + polpc:wfed + density:pctmin + density:pctymle + taxpc:wfed + region:wsta, data=Crime[-folds[[i]],])
-    pred.spline <- predict(fit.splines, newdata=Crime[folds[[i]],], se.fit=T)
-    kfolds.results[i] = mean(abs((pred.spline$fit - Crime[folds[[i]],]$crmrte)/Crime[folds[[i]],]$crmrte))
-    print(paste("Fold", i, "accuracy:", kfolds.results[i]))
-  }
-  results.overall = c(results.overall, mean(kfolds.results))
+# k-Folds with smooth splines
+kfolds.results = vector()
+fit.vector = list()
+for (i in 1:length(folds)) {
+  fit.splines <- lm(crmrte~bs(pctmin, knots=pctmin.knots) + log(prbconv) + log(polpc) + prbarr + density:county + prbarr:prbpris + pctmin:polpc + polpc:wfed + density:pctmin + density:pctymle + taxpc:wfed + region:wsta, data=Crime[-folds[[i]],])
+  fit.vector[[i]] = fit.splines
+  pred.spline <- predict(fit.splines, newdata=Crime[folds[[i]],], se.fit=T)
+  kfolds.results[i] = mean(abs((pred.spline$fit - Crime[folds[[i]],]$crmrte)/Crime[folds[[i]],]$crmrte))
+  #print(paste("Fold", i, "accuracy:", kfolds.results[i]))
 }
+print(kfolds.results)
+print(mean(kfolds.results))
 
 #################
 # Plot
