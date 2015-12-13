@@ -10,6 +10,7 @@ library(ggplot2)
 library(gridExtra)
 library(splines)
 library(caret)
+library(knitr)
 
 ######################################################################
 # Setup
@@ -122,7 +123,7 @@ fit.anova <- aov(crmrte ~ region_w_nw, data=Crime)
 summary(fit.anova)
 fit.anova
 #compare the means
-tapply(crmrte,region_w_nw, mean)
+tapply(Crime$crmrte,Crime$region_w_nw, mean)
 
 #anova using two categorical values
 fit.anova2 <- aov(crmrte ~ region_w_nw + smsa, data=Crime)
@@ -175,16 +176,16 @@ wct$p.value
 test = sample(nrow(Crime), nrow(Crime)*.2)
 
 #decision tree
-fit <-rpart(Crime$crmrte_cat ~.,data=dataset[-test,-4])
-rpplot(fit)
-pred.fit <- predict(fit,newdata=dataset[test,-4])
+fit <-rpart(crmrte_cat ~.,data=Crime[-test,-3])
+prp(fit)
+pred.fit <- predict(fit,newdata=Crime[test,-3])
 pred.class <- rep('low/normal', length(Crime$crmrte_cat))
 pred.class[pred.fit[,'high']>0.5] <- 'high'
 confusionMatrix(pred.class,Crime$crmrte_cat)
 
 #logistic regression
-fit.reg <-glm(Crime$crmrte_cat ~.,data=dataset[-test,-4], family=binomial)
-pred.fit <- predict(fit.reg,newdata=dataset[test,-4], type='response')
+fit.reg <-glm(crmrte_cat ~.,data=Crime[-test,-3], family=binomial)
+pred.fit <- predict(fit.reg,newdata=Crime[test,-3], type='response')
 pred.class <- rep('low/normal', length(Crime$crmrte_cat))
 pred.class[pred.fit>0.5] <- 'high'
 confusionMatrix(pred.class,Crime$crmrte_cat)
