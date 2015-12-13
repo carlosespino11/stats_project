@@ -5,7 +5,8 @@ library(rpart.plot)
 library(caret)
 library(GGally)
 library(grid)
-
+library(ggplot2)
+library(gridExtra)
 ######################################################################
 # Setup
 ######################################################################
@@ -67,39 +68,29 @@ ggplot() + geom_density(aes(x = Crime$crmrte), alpha=.3, fill = "grey") + xlab("
 
 #we trace paired boxplots for all the variables
 
-par(mfrow=c(2,3) )
-boxplot_crmte_cat = function(data = Crime){
-  plot = ggplot(Crime) + geom_boxplot(aes(y = prbarr, x = crmrte_cat, fill=crmrte_cat)) + 
-        theme_fivethirtyeight()
+boxplot_crmte_cat = function(variable, data = Crime){
+  plot_df= data.frame(y = data[,variable], x = data$crmrte_cat)
+  
+  plot = ggplot(plot_df) + geom_boxplot(aes(y= y, x = x, fill=x)) + 
+        theme_fivethirtyeight() + labs(title = variable, x= "crmrte_cat", y = variable )
+  
   return(plot)
 }
-boxplot(prbarr~crmrte_cat,data=Crime, main='prbarr')
-boxplot(prbconv~crmrte_cat,data=Crime, main='prbconv')
-boxplot(prbpris~crmrte_cat,data=Crime, main='prbpris')
-boxplot(avgsen~crmrte_cat,data=Crime, main='avgsen')
-boxplot(polpc~crmrte_cat,data=Crime, main='polpc')
-boxplot(density~crmrte_cat,data=Crime, main='density')
 
-multiplot(p1, p2, p3, p4, cols=2)
+
+grid.arrange(boxplot_crmte_cat(variable = "prbarr"), boxplot_crmte_cat("prbconv"), boxplot_crmte_cat("prbpris"),
+          boxplot_crmte_cat("avgsen"), boxplot_crmte_cat("polpc"),boxplot_crmte_cat("density"), ncol=3)
 
 #conclusions: density may have a predictive value for high crime rates
 
-par(mfrow=c(2,3) )
-boxplot(taxpc~crmrte_cat,data=Crime, main='taxpc')
-boxplot(pctmin~crmrte_cat,data=Crime, main='pctmin')
-boxplot(wcon~crmrte_cat,data=Crime, main='wcon')
-boxplot(wtuc~crmrte_cat,data=Crime, main='wtuc')
-boxplot(wfir~crmrte_cat,data=Crime, main='wfir')
-boxplot(wser~crmrte_cat,data=Crime, main='wser')
+grid.arrange(boxplot_crmte_cat(variable = "taxpc"), boxplot_crmte_cat("pctmin"), boxplot_crmte_cat("wcon"),
+             boxplot_crmte_cat("wtuc"), boxplot_crmte_cat("wfir"),boxplot_crmte_cat("wser"), ncol=3)
+
 #pctmin may have a predictive value
 
-par(mfrow=c(2,3) )
-boxplot(wmfg~crmrte_cat,data=Crime, main='wmfg')
-boxplot(wfed~crmrte_cat,data=Crime, main='wfed')
-boxplot(wsta~crmrte_cat,data=Crime, main='wsta')
-boxplot(wloc~crmrte_cat,data=Crime, main='wloc')
-boxplot(mix~crmrte_cat,data=Crime, main='mix')
-boxplot(pctymle~crmrte_cat,data=Crime, main='pctymle')
+grid.arrange(boxplot_crmte_cat(variable = "wmfg"), boxplot_crmte_cat("wfed"), boxplot_crmte_cat("wsta"),
+             boxplot_crmte_cat("wloc"), boxplot_crmte_cat("mix"),boxplot_crmte_cat("pctymle"), ncol=3)
+
 #'wfed' and 'wmfg' may have a predictive value
 
 #timeline of crime rate by year
