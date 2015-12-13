@@ -4,19 +4,22 @@ library(glmnet)
 library(rpart.plot)
 library(caret)
 
-#################
-# Xavi's code
-#################
+######################################################################
+# Setup
+######################################################################
 Crime <- read.csv("Crime.csv")
-Crime = Crime[,-1]
+Crime = Crime[,-1] # Remove the index column
 
+# Identify and remove the outliers found from later analyses
+# fit.all <- lm(crmrte~bs(pctmin, knots=pctmin.knots) + log(prbconv) + log(polpc) + prbarr + density:county + prbarr:prbpris + pctmin:polpc + polpc:wfed + density:pctmin + density:pctymle + taxpc:wfed + region:wsta, data=Crime)
+bad = c(440,353,437,439)
+Crime = Crime[-bad,]
+
+######################################################################
+# Xavi's code
+######################################################################
 #A dataframe containing:
-#X: index
-#Action: remove it
-Crime$X <- NULL
-
 #county: county identifier.
-
 #year: from 1981 to 1987. PREDICTOR.
 #crmrte: crimes committed per person.  TARGET VARIABLE.
 #prbarr: 'probability' of arrest. PREDICTOR.
@@ -172,9 +175,9 @@ confusionMatrix(pred.class,crmrte_cat)
 fit.reg
 
 
-###################################
+######################################################################
 # Testing and training set creation
-###################################
+######################################################################
 
 test = sample(nrow(Crime), nrow(Crime)*.2)
 #test = sample(530,100)
@@ -198,9 +201,9 @@ x_cols = colnames(xs, do.NULL = FALSE, prefix = "x.")
 colnames(xs) <- paste("x", x_cols, sep = ".")
 x_cols = colnames(xs)
 
-###################################
+######################################################################
 # Training and test errors for lm
-###################################
+######################################################################
 
 for (i in 1:p) {
   coefi = coef(bestsubset, id = i)
@@ -218,9 +221,9 @@ for (i in 1:p) {
 }
 which.min(val.train.errors)
 
-###################################
+######################################################################
 # Logarithmic, interaction and polynomial fits
-###################################
+######################################################################
 
 lm.2.fit = lm(crmrte ~  prbarr + prbconv + polpc + density + as.factor(region) + pctmin + wfed + pctymle, data = Crime)
 summary(lm.2.fit)
@@ -238,9 +241,9 @@ anova(lm.2.fit)
 lm.5.fit = lm(crmrte ~  log(prbarr) + log(prbconv) + log(polpc) + density + as.factor(region) + pctmin + poly(wfed,3) + pctymle + .*., data = Crime)
 
 
-###################################
+######################################################################
 # AIC
-###################################
+######################################################################
 
 library(MASS)
 interaction.fit = stepAIC(lm.5.fit)
@@ -251,9 +254,9 @@ pred = as.matrix(xs_test[, x_cols %in% names(coefi)]) %*% coefi[names(coefi)
 val.test.errors = mean((ys_test - pred)^2)
 val.test.errors
 
-###################################
+######################################################################
 # Lasso
-###################################
+######################################################################
 
 formula = "~ log(prbconv) + log(polpc) + density + pctmin +   poly(wfed, 3) + pctymle + county + year + prbarr + prbconv +   prbpris + avgsen + polpc + taxpc + region + smsa + wcon +   wtuc + wtrd + wfir + wser + wmfg + wfed + wsta + wloc + mix +   county:year + county:avgsen + county:polpc + density:county +   pctmin:county + county:wcon + county:wtuc + county:wtrd +   county:wfir + county:wmfg + county:wsta + county:wloc + pctymle:county +   year:prbconv + year:prbpris + year:polpc + year:region +   year:smsa + pctmin:year + year:wtrd + year:wfir + year:wmfg +   year:wsta + year:mix + pctymle:year + prbarr:prbpris + prbarr:polpc +   density:prbarr + prbarr:region + pctmin:prbarr + prbarr:wcon +   prbarr:wtuc + prbarr:wtrd + prbarr:wfir + prbarr:wfed + prbconv:prbpris +   prbconv:polpc + prbconv:smsa + pctmin:prbconv + prbconv:wcon +   prbconv:wfir + prbconv:wser + prbconv:wmfg + prbconv:mix +   density:prbpris + prbpris:taxpc + prbpris:region + pctmin:prbpris +   prbpris:wcon + prbpris:wtrd + prbpris:wmfg + prbpris:wfed +   prbpris:wsta + prbpris:wloc + density:avgsen + avgsen:taxpc +   avgsen:region + avgsen:smsa + pctmin:avgsen + avgsen:wcon +   avgsen:wtrd + avgsen:wfir + avgsen:wser + avgsen:wfed + avgsen:mix +   pctymle:avgsen + polpc:region + polpc:smsa + pctmin:polpc +   polpc:wtuc + polpc:wtrd + polpc:wser + polpc:wmfg + polpc:wfed +   density:region + density:smsa + density:pctmin + density:wcon +   density:wtuc + density:wtrd + density:wsta + density:mix +   density:pctymle + taxpc:region + taxpc:smsa + pctmin:taxpc +   taxpc:wmfg + taxpc:wfed + taxpc:wsta + taxpc:wloc + region:smsa +   pctmin:region + region:wcon + region:wtuc + region:wtrd +   region:wfir + region:wser + region:wmfg + region:wfed + region:wsta +   region:wloc + region:mix + pctymle:region + pctmin:smsa +   smsa:wtuc + smsa:wtrd + smsa:wser + smsa:wmfg + smsa:wfed +   smsa:wsta + smsa:mix + pctymle:smsa + pctmin:wtrd + pctmin:wfir +   pctmin:wser + pctmin:wmfg + pctmin:wfed + pctmin:wsta + pctmin:wloc +   pctmin:mix + pctmin:pctymle + wcon:wtuc + wcon:wfir + wcon:wmfg +   wcon:wfed + wcon:wsta + wcon:mix + pctymle:wcon + wtuc:wsta +   wtuc:wloc + wtrd:wfir + wtrd:wmfg + wtrd:wsta + wtrd:mix +   wfir:wmfg + wfir:wfed + wfir:wsta + wfir:wloc + wfir:mix +   pctymle:wfir + wser:wmfg + wser:wfed + wser:wloc + wser:mix +   wmfg:wfed + pctymle:wmfg + wfed:wsta + wfed:wloc + wfed:mix +   wsta:wloc + wsta:mix + pctymle:wsta + pctymle:mix"
 xs_lasso = model.matrix(as.formula(formula), Crime)
@@ -276,13 +279,13 @@ mean(abs((ys_test - ys_lasso_pred)/ ys_test))
 library(splines)
 library(caret)
 
+# To identify outliers
+# fit.all <- lm(crmrte~bs(pctmin, knots=pctmin.knots) + log(prbconv) + log(polpc) 
+#   + prbarr + density:county + prbarr:prbpris + pctmin:polpc + polpc:wfed + density:pctmin 
+#   + density:pctymle + taxpc:wfed + region:wsta, data=Crime)
+
 # k-Folds (k=10)
 folds <- createFolds(Crime$pctmin, k=10, list=TRUE, returnTrain=FALSE)
-
-# Identify outliers
-# fit.all <- lm(crmrte~bs(pctmin, knots=pctmin.knots) + log(prbconv) + log(polpc) + prbarr + density:county + prbarr:prbpris + pctmin:polpc + polpc:wfed + density:pctmin + density:pctymle + taxpc:wfed + region:wsta, data=Crime)
-bad = c(440,353,437,439)
-Crime = Crime[-bad,]
 
 # Split into training/test sets
 set.seed(1)
@@ -317,12 +320,12 @@ fit.splines.2 = lm(crmrte~bs(pctmin, knots=pctmin.knots)+density+prbarr+wfed, da
 pred2 = predict(fit.splines.2, newdata=(Crime[test,])[newdata.pctmin$ix,], se.fit=T)
 error.pctmin.plus = mean(abs((pred2$fit - crime.actual)/crime.actual))
 
-# $pctmin spline with Diego's predictors
+# $pctmin spline with Diego's predictors **********
 fit.splines.3 = lm(crmrte~bs(pctmin, knots=pctmin.knots) + log(prbconv) + log(polpc) + prbarr + density:county + prbarr:prbpris + pctmin:polpc + polpc:wfed + density:pctmin + density:pctymle + taxpc:wfed + region:wsta, data=Crime[-test,])
 pred3 = predict(fit.splines.3, newdata=(Crime[test,])[newdata.pctmin$ix,], se.fit=T)
 error.pctmin.overall = mean(abs((pred3$fit - crime.actual)/crime.actual))
 
-# $pctmin poly with Diego's predictors
+# $pctmin poly with Diego's predictors (for comp)
 fit.poly.4 = lm(crmrte~poly(pctmin,4) + log(prbconv) + log(polpc) + prbarr + density:county + prbarr:prbpris + pctmin:polpc + polpc:wfed + density:pctmin + density:pctymle + taxpc:wfed + region:wsta, data=Crime[-test,])
 pred4 = predict(fit.poly.4, newdata=(Crime[test,])[newdata.pctmin$ix,], se.fit=T)
 error.pctmin.overall.poly = mean(abs((pred4$fit - crime.actual)/crime.actual))
@@ -340,16 +343,10 @@ for (i in 1:length(folds)) {
 print(kfolds.results)
 print(mean(kfolds.results))
 
-#################
+######################################################################
 # Plot
-#################
+######################################################################
 plot(Crime$pctmin,Crime$crmrte,col="gray")
 lines(newdata.pctmin$x, pred$fit, lwd=2)
 lines(newdata.pctmin$x, pred$fit+2*pred$se, lty="dashed")
 lines(newdata.pctmin$x, pred$fit-2*pred$se, lty="dashed")
-
-
-
-
-
-
