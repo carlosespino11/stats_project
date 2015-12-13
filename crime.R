@@ -106,10 +106,12 @@ ggplot(Crime) + geom_bar(aes(x =factor(year), fill=crmrte_cat )) +
   scale_fill_fivethirtyeight("cyl") + theme_fivethirtyeight() + xlab("year")
 #no significance difference
 
-ggpairs(Crime[,c( 'region','crmrte_cat')])
+ggpairs(Crime[,c( 'region','crmrte_cat')])+
+  theme_fivethirtyeight()
 #candidate to test anova region west
 
-ggpairs(Crime[,c( 'smsa','crmrte_cat')])
+ggpairs(Crime[,c( 'smsa','crmrte_cat')])+
+  theme_fivethirtyeight()
 #smsa yes with high rate.
 
 #anova test with region: west/ other.
