@@ -3,10 +3,13 @@ library(leaps)
 library(glmnet)
 library(rpart.plot)
 library(caret)
+library(GGally)
+library(grid)
 
 ######################################################################
 # Setup
 ######################################################################
+source("theme_fivethirtyeight.R")
 Crime <- read.csv("Crime.csv")
 Crime = Crime[,-1] # Remove the index column
 
@@ -50,19 +53,35 @@ Crime$crmrte_cat[Crime$crmrte  > median(Crime$crmrte)] <- "high"
 
 #histogram of the response variable
 par(mfrow=c(1,1) )
-hist(crmrte)
+
+ggplot() + geom_density(aes(x = Crime$crmrte), alpha=.3, fill = "grey") + xlab("Crimes per person") +
+  theme_fivethirtyeight()
 
 #histogram of the log of the response.
-hist(log(crmrte))
+ggplot() + geom_density(aes(x = Crime$crmrte), alpha=.3, fill = "grey") + xlab("log(Crimes per person)") +
+  scale_x_log10() +
+  theme_fivethirtyeight()
+
+#histogram of the log of the response.
+
 
 #we trace paired boxplots for all the variables
+
 par(mfrow=c(2,3) )
+boxplot_crmte_cat = function(data = Crime){
+  plot = ggplot(Crime) + geom_boxplot(aes(y = prbarr, x = crmrte_cat, fill=crmrte_cat)) + 
+        theme_fivethirtyeight()
+  return(plot)
+}
 boxplot(prbarr~crmrte_cat,data=Crime, main='prbarr')
 boxplot(prbconv~crmrte_cat,data=Crime, main='prbconv')
 boxplot(prbpris~crmrte_cat,data=Crime, main='prbpris')
 boxplot(avgsen~crmrte_cat,data=Crime, main='avgsen')
 boxplot(polpc~crmrte_cat,data=Crime, main='polpc')
 boxplot(density~crmrte_cat,data=Crime, main='density')
+
+multiplot(p1, p2, p3, p4, cols=2)
+
 #conclusions: density may have a predictive value for high crime rates
 
 par(mfrow=c(2,3) )
@@ -127,9 +146,9 @@ fit.anova3
 #continuity OK
 
 #A. sign test
-med <- median(crmrte)
-n <- length(crmrte)
-x <- crmrte-med
+med <- median(Crime$crmrte)
+n <- length(Crime$crmrte)
+x <- Crime$crmrte-med
 pos <- sum(x>0) 
 #p value 
 1 - pbinom(pos, n, 1 / 2)
@@ -139,7 +158,7 @@ k<- 260+c(23,30,35,38) # probabilities 99%; 95%; 88%; 81%;
 1 - 2 * pbinom(k, n, 1 / 2)
 perc <- c(0.99,0.95,0.88,0.81)
 for (i in 1:4){
-  print(c(perc[i],'inf:',sort(crmrte)[k[i]], '--sup:',sort(crmrte)[n-k[i]+1],'/n'))
+  print(c(perc[i],'inf:',sort(Crime$crmrte)[k[i]], '--sup:',sort(Crime$crmrte)[n-k[i]+1],'/n'))
 }
 
 #B. wilcoxson
@@ -149,7 +168,7 @@ for (i in 1:4){
 #continuity
 #symmetry
 #to achieve the symetry we work with the log(crime rate)
-crmrte_l <- log(crmrte)
+crmrte_l <- log(Crime$crmrte)
 #run the wilcox test
 wct <- wilcox.test(crmrte_l, conf.int = TRUE)
 exp(wct$conf.int)
@@ -159,19 +178,19 @@ wct$p.value
 test = sample(nrow(Crime), nrow(Crime)*.2)
 
 #decision tree
-fit <-rpart(crmrte_cat ~.,data=dataset[-test,-4])
+fit <-rpart(Crime$crmrte_cat ~.,data=dataset[-test,-4])
 rpplot(fit)
 pred.fit <- predict(fit,newdata=dataset[test,-4])
-pred.class <- rep('low/normal', length(crmrte_cat))
+pred.class <- rep('low/normal', length(Crime$crmrte_cat))
 pred.class[pred.fit[,'high']>0.5] <- 'high'
-confusionMatrix(pred.class,crmrte_cat)
+confusionMatrix(pred.class,Crime$crmrte_cat)
 
 #logistic regression
-fit.reg <-glm(crmrte_cat ~.,data=dataset[-test,-4], family=binomial)
+fit.reg <-glm(Crime$crmrte_cat ~.,data=dataset[-test,-4], family=binomial)
 pred.fit <- predict(fit.reg,newdata=dataset[test,-4], type='response')
-pred.class <- rep('low/normal', length(crmrte_cat))
+pred.class <- rep('low/normal', length(Crime$crmrte_cat))
 pred.class[pred.fit>0.5] <- 'high'
-confusionMatrix(pred.class,crmrte_cat)
+confusionMatrix(pred.class,Crime$crmrte_cat)
 fit.reg
 
 
@@ -180,8 +199,6 @@ fit.reg
 ######################################################################
 
 test = sample(nrow(Crime), nrow(Crime)*.2)
-#test = sample(530,100)
-
 xs = Crime[-which(names(Crime) %in% c("crmrte"))]
 ys = Crime[which(names(Crime) %in% c("crmrte"))]
 xs_test = xs[test,]
@@ -192,7 +209,7 @@ ys_train = ys[-test,]
 lm.fit = lm(crmrte ~ ., data = Crime)
 bestsubset=regsubsets(y ~ ., data = data.frame(y = ys_train, x = xs_train), nvmax = 23)
 
-p = 23
+
 
 set.seed(1)
 val.train.errors = rep(NA, p)
@@ -352,9 +369,9 @@ lines(newdata.pctmin$x, pred$fit+2*pred$se, lty="dashed")
 lines(newdata.pctmin$x, pred$fit-2*pred$se, lty="dashed")
 
 ggplot() + geom_point(aes(x = Crime$pctmin, y = Crime$crmrte), color="darkgrey") + 
-  geom_line(aes(x = newdata.pctmin$x, y = pred$fit)) +
+  geom_ribbon(aes(x = newdata.pctmin$x, y = pred$fit, ymin= pred$fit-2*pred$se, ymax= pred$fit+2*pred$se), color="lightgrey", alpha =.15)+
+  geom_line(aes(x = newdata.pctmin$x, y = pred$fit), color="red")+
   geom_line(aes(x = newdata.pctmin$x, y = pred$fit+2*pred$se), linetype = "dashed") +
-  geom_line(aes(x = newdata.pctmin$x, y = pred$fit-2*pred$se), linetype = "dashed") 
-
-
-
+  geom_line(aes(x = newdata.pctmin$x, y = pred$fit-2*pred$se), linetype = "dashed") +
+  labs(x="Proportion of minority in 1980 (%)", y="Crimes committed per person", title="How is the crime rate related to the proportion of\n    minorities in the region?") +
+  theme_fivethirtyeight()
