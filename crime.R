@@ -47,13 +47,13 @@ Crime = Crime[-bad,]
 #mix: offence mix: face-to-face/other. PREDICTOR.
 #pctymle: percentage of young males. PREDICTOR.
 
+par(mfrow=c(1,3) )
 #WE BUILD A CATEGORICAL VARIABLE WITH THE HIGHEST QUARTILE OF HIGH CRIME RATE
 Crime$crmrte_cat <- rep('low/normal', length(Crime$crmrte))
 Crime$crmrte_cat[Crime$crmrte  > median(Crime$crmrte)] <- "high"
 
+boxplot(Crime$crmrte, main= 'Crimes per person')
 #histogram of the response variable
-par(mfrow=c(1,1) )
-
 ggplot() + geom_density(aes(x = Crime$crmrte), alpha=.3, fill = "grey") + xlab("Crimes per person") +
   theme_fivethirtyeight()
 
