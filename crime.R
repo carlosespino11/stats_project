@@ -1,6 +1,8 @@
 library(ISLR)
 library(leaps)
 library(glmnet)
+library(rpart.plot)
+library(caret)
 
 #################
 # Xavi's code
@@ -149,6 +151,25 @@ crmrte_l <- log(crmrte)
 wct <- wilcox.test(crmrte_l, conf.int = TRUE)
 exp(wct$conf.int)
 wct$p.value
+
+#fit some models
+test = sample(nrow(Crime), nrow(Crime)*.2)
+
+#decision tree
+fit <-rpart(crmrte_cat ~.,data=dataset[-test,-4])
+rpplot(fit)
+pred.fit <- predict(fit,newdata=dataset[test,-4])
+pred.class <- rep('low/normal', length(crmrte_cat))
+pred.class[pred.fit[,'high']>0.5] <- 'high'
+confusionMatrix(pred.class,crmrte_cat)
+
+#logistic regression
+fit.reg <-glm(crmrte_cat ~.,data=dataset[-test,-4], family=binomial)
+pred.fit <- predict(fit.reg,newdata=dataset[test,-4], type='response')
+pred.class <- rep('low/normal', length(crmrte_cat))
+pred.class[pred.fit>0.5] <- 'high'
+confusionMatrix(pred.class,crmrte_cat)
+fit.reg
 
 
 ###################################
@@ -326,4 +347,9 @@ plot(Crime$pctmin,Crime$crmrte,col="gray")
 lines(newdata.pctmin$x, pred$fit, lwd=2)
 lines(newdata.pctmin$x, pred$fit+2*pred$se, lty="dashed")
 lines(newdata.pctmin$x, pred$fit-2*pred$se, lty="dashed")
+
+
+
+
+
 
