@@ -5,7 +5,7 @@ output: pdf_document
 
 # Linear analysis
 
-```{R, echo=FALSE}
+```{R, results = 'hide', echo=FALSE}
 library(ISLR)
 library(leaps)
 library(glmnet)
@@ -35,6 +35,7 @@ Crime = Crime[-bad,]
 Additionally, we considered a standard _linear regression_ model involving all predictors, as an alternative means to view the significance of each predictor. Note that in this context, performing _k-fold cross-validation_ or _bootstrapping_ wouldn't allow us to come up with an "averaged" subset, hence we performed an ordinary $80/20$ splitting of the data into the testing an training as shown in the code below: 
 
 ```{R}
+set.seed(1000)
 test = sample(nrow(Crime), nrow(Crime)*.2)
 excluded = c("crmrte", "crmrte_cat", "region_w_nw")
 xs = Crime[-which(names(Crime) %in% excluded)]
@@ -55,7 +56,7 @@ summary(lm.fit)
 
 as the $R^2$ value is sufficiently high (`r summary(lm.fit)$r.squared`), we decided to perform `best subset selection` on the set of predictors. Although we are aware of the performance penalties of doing this for $p = 23$, the running times were considerably short and hence we decided to stick to this approach: 
 
-```{R}
+```{R, cache = TRUE}
 bestsubset=regsubsets(y ~ ., data = data.frame(y = ys_train, x = xs_train), nvmax = p)
 ```
 
@@ -63,7 +64,7 @@ After getting all best subsets with size $k = 1...p$, we analysed both the _trai
 
 
 ```{R}
-set.seed(1)
+set.seed(1000)
 val.train.errors = rep(NA, p)
 val.test.errors = rep(NA, p)
 x_cols = colnames(xs, do.NULL = FALSE, prefix = "x.")
@@ -124,7 +125,7 @@ Next, we analysed all significant interactions between all interaction terms:
 
 ```{R}
 lm.4.fit = lm(crmrte ~  .*., data = Crime)
-summary(lm.4.fit)
+summary(lm.4.fit)$r.squared
 ```
 
 and plugged all interactions to out previous model: 
@@ -133,16 +134,28 @@ and plugged all interactions to out previous model:
 lm.5.fit = lm(crmrte ~  log(prbarr) + log(prbconv) +
                 log(polpc) + density + as.factor(region) + 
                 pctmin + poly(wfed,3) + pctymle + .*., data = Crime)
-summary(lm.5.fit)
+summary(lm.5.fit)$r.squared
 ```
 
-We can see that both models are seriously overfitting ($R^2$ values are `r summary(lm.4.fit)$r.squared` and `r summary(lm.5.fit)$r.squared` respectively, while the number of predictors has skyrocketed due to all interaction combinations). Even though it is tempting to keep only those interaction with a relevant significance value, since the removal of each of these predictors affects the overall model, we decided instead to choose a final model by using a _Stepwise Algorithm_ applying _AIC_ to decide. The stepwise procedure is too lengthy and cumbersome to show in text, but the code to generated is displayed below: 
+The number of interactions that we added to the model are: 
 
-```{R, echo = FALSE}
+```{R}
+dim(summary(lm.4.fit)$coefficients)
+```
+
+We can see that both models are seriously overfitting ($R^2$ values are `r summary(lm.4.fit)$r.squared` and `r summary(lm.5.fit)$r.squared` respectively, while the number of predictors has skyrocketed due to all interaction combinations). Even though it is tempting to keep only those interactions with a relevant significance value, since the removal of each of these predictors affects the overall model, we decided instead to choose a final model by using a _Stepwise Algorithm_ applying _AIC_ to decide. The stepwise procedure is too lengthy and cumbersome to show in text, but the code to generated is displayed below: 
+
+```{R, results='hide', cache = TRUE}
 interaction.fit = stepAIC(lm.5.fit)
 ```
 
-Once we got the fit, we proceeded to calculate both _training MSE_ and _testing MSE_: 
+Once we got the fit, which has the following number of coefficients: 
+
+```{R}
+length(interaction.fit$coefficients)
+```
+
+which means a reduction on the number of interactions by $30\%$, we proceeded to calculate both _training MSE_ and _testing MSE_: 
 
 
 ```{R}
@@ -168,28 +181,36 @@ With the resulting model from all our previous steps, we performed _k-fold cross
 formula = "~ log(prbconv) + log(polpc) + density + pctmin +  poly(wfed, 3) +
 pctymle + county + year + prbarr + prbconv +   prbpris + avgsen + polpc +
 taxpc + region + smsa + wcon +   wtuc + wtrd + wfir + wser + wmfg + wfed + 
-wsta + wloc + mix +   county:year + county:avgsen + county:polpc + density:county +  
-pctmin:county + county:wcon + county:wtuc + county:wtrd +   county:wfir + county:wmfg + 
-county:wsta + county:wloc + pctymle:county +   year:prbconv + year:prbpris + year:polpc + 
-year:region +   year:smsa + pctmin:year + year:wtrd + year:wfir + year:wmfg +   year:wsta +
-year:mix + pctymle:year + prbarr:prbpris + prbarr:polpc +   density:prbarr + prbarr:region +
-pctmin:prbarr + prbarr:wcon +   prbarr:wtuc + prbarr:wtrd + prbarr:wfir + prbarr:wfed +
+wsta + wloc + mix +   county:year + county:avgsen + county:polpc + 
+density:county +  pctmin:county + county:wcon + county:wtuc + county:wtrd +
+county:wfir + county:wmfg + county:wsta + county:wloc + pctymle:county +   
+year:prbconv + year:prbpris + year:polpc + year:region +   year:smsa + pctmin:year + 
+year:wtrd + year:wfir + year:wmfg +   year:wsta + year:mix + pctymle:year +
+prbarr:prbpris + prbarr:polpc +   density:prbarr + prbarr:region + pctmin:prbarr + 
+prbarr:wcon +   prbarr:wtuc + prbarr:wtrd + prbarr:wfir + prbarr:wfed +
 prbconv:prbpris +   prbconv:polpc + prbconv:smsa + pctmin:prbconv + prbconv:wcon +   
-prbconv:wfir + prbconv:wser + prbconv:wmfg + prbconv:mix +   density:prbpris + prbpris:taxpc + 
-prbpris:region + pctmin:prbpris +   prbpris:wcon + prbpris:wtrd + prbpris:wmfg + prbpris:wfed + 
-prbpris:wsta + prbpris:wloc + density:avgsen + avgsen:taxpc +   avgsen:region + avgsen:smsa + 
-pctmin:avgsen + avgsen:wcon +   avgsen:wtrd + avgsen:wfir + avgsen:wser + avgsen:wfed + avgsen:mix +
-pctymle:avgsen + polpc:region + polpc:smsa + pctmin:polpc +   polpc:wtuc + polpc:wtrd + polpc:wser + 
-polpc:wmfg + polpc:wfed +   density:region + density:smsa + density:pctmin + density:wcon +  density:wtuc +
-density:wtrd + density:wsta + density:mix +   density:pctymle + taxpc:region + taxpc:smsa + pctmin:taxpc + 
-taxpc:wmfg + taxpc:wfed + taxpc:wsta + taxpc:wloc + region:smsa +   pctmin:region + region:wcon + region:wtuc + 
-region:wtrd +   region:wfir + region:wser + region:wmfg + region:wfed + region:wsta +   region:wloc + region:mix + 
-pctymle:region + pctmin:smsa +   smsa:wtuc + smsa:wtrd + smsa:wser + smsa:wmfg + smsa:wfed +   smsa:wsta + 
-smsa:mix + pctymle:smsa + pctmin:wtrd + pctmin:wfir +   pctmin:wser + pctmin:wmfg + pctmin:wfed + pctmin:wsta + 
-pctmin:wloc +   pctmin:mix + pctmin:pctymle + wcon:wtuc + wcon:wfir + wcon:wmfg +   wcon:wfed + wcon:wsta +
-wcon:mix + pctymle:wcon + wtuc:wsta +   wtuc:wloc + wtrd:wfir + wtrd:wmfg + wtrd:wsta + wtrd:mix + wfir:wmfg +
-wfir:wfed + wfir:wsta + wfir:wloc + wfir:mix +   pctymle:wfir + wser:wmfg + wser:wfed + wser:wloc + wser:mix +
-wmfg:wfed + pctymle:wmfg + wfed:wsta + wfed:wloc + wfed:mix +   wsta:wloc + wsta:mix + pctymle:wsta + pctymle:mix"
+prbconv:wfir + prbconv:wser + prbconv:wmfg + prbconv:mix +   density:prbpris +
+prbpris:taxpc + prbpris:region + pctmin:prbpris +   prbpris:wcon + prbpris:wtrd + 
+prbpris:wmfg + prbpris:wfed + prbpris:wsta + prbpris:wloc + density:avgsen + 
+avgsen:taxpc + avgsen:region + avgsen:smsa + pctmin:avgsen + avgsen:wcon +   
+avgsen:wtrd + avgsen:wfir + avgsen:wser + avgsen:wfed + avgsen:mix + pctymle:avgsen + 
+polpc:region + polpc:smsa + pctmin:polpc +   polpc:wtuc + polpc:wtrd + polpc:wser + 
+polpc:wmfg + polpc:wfed +density:region + density:smsa + density:pctmin + 
+density:wcon +  density:wtuc + density:wtrd + density:wsta + density:mix +   
+density:pctymle + taxpc:region + taxpc:smsa + pctmin:taxpc + 
+taxpc:wmfg + taxpc:wfed + taxpc:wsta + taxpc:wloc + region:smsa +   
+pctmin:region + region:wcon + region:wtuc + region:wtrd +   region:wfir + 
+region:wser + region:wmfg + region:wfed + region:wsta +   region:wloc + 
+region:mix + pctymle:region + pctmin:smsa +   smsa:wtuc + smsa:wtrd + 
+smsa:wser + smsa:wmfg + smsa:wfed +   smsa:wsta + smsa:mix + pctymle:smsa + 
+pctmin:wtrd + pctmin:wfir +   pctmin:wser + pctmin:wmfg + pctmin:wfed + 
+pctmin:wsta + pctmin:wloc +   pctmin:mix + pctmin:pctymle + wcon:wtuc +
+wcon:wfir + wcon:wmfg + wcon:wfed + wcon:wsta + wcon:mix + pctymle:wcon + 
+wtuc:wsta +   wtuc:wloc + wtrd:wfir +wtrd:wmfg + wtrd:wsta + wtrd:mix + 
+wfir:wmfg + wfir:wfed + wfir:wsta + wfir:wloc + wfir:mix + pctymle:wfir + 
+wser:wmfg + wser:wfed + wser:wloc + wser:mix + wmfg:wfed + pctymle:wmfg + 
+wfed:wsta + wfed:wloc + wfed:mix +   wsta:wloc + wsta:mix + pctymle:wsta 
++ pctymle:mix"
 xs_lasso = model.matrix(as.formula(formula), Crime)
 xs_lasso_train = xs_lasso[-test,]
 xs_lasso_test = xs_lasso[test,]
@@ -200,28 +221,28 @@ lasso.mod=cv.glmnet(xs_lasso[-test ,],ys_train,alpha=1,lambda=grid)
 Now that we have computed all possible values for $lambda$, we can create the plot showing the _training RSE_ and $\lambda$ increases: 
 
 ```{R}
+#PLOT HERE
 ```
 
 We then chose a value of $\lambda$ within $1$ standard deviation from the optimum value, as this is a commonly established good practice. The fit with that value is performed in the code below: 
 
 ```{R}
 lasso.mod.3=glmnet(xs_lasso[-test ,],ys_train,alpha=1,lambda=lasso.mod$lambda.1se)
-summary(lasso.mod.3)
+lasso_vars =  names(coef(lasso.mod.3)[,1][coef(lasso.mod.3)[,1]!=0])[-1]
+length(lasso_vars)
 ```
 
-The _testing RSE_ for this model is
+Lasso actually yielded `r length(lasso_vars)` variables with nonzero values, a reduction of `r round(((length(interaction.fit$coefficients) - length(lasso_vars)) / length(interaction.fit$coefficients))*100)`$\%$ with respect to the _stepwise AIC_. The _testing RSE_ for this model is
 
 ```{R}
-lasso_vars =  names(coef(lasso.mod.3)[,1][coef(lasso.mod.3)[,1]!=0])[-1]
 ys_lasso_pred = predict(lasso.mod.3, xs_lasso_test, s = lasso.mod$lambda.1se)
-lasso_rse = mean(ys_test - ys_lasso_pred)^2
-lasso_rse / val.test.errors[which.min(val.test.errors)] * 100
+lasso_rse = mean((ys_test - ys_lasso_pred)^2)
 ```
 
 and the error rate w.r.t. to our original model using _best subset selection_ is: 
 
 ```{R}
-lasso_rse / val.test.errors[which.min(val.test.errors)] * 100
+(lasso_rse / val.test.errors[which.min(val.test.errors)]) * 100
 ```
 
 Finally, we analyse the relative average $L1$ distance between our estimators and the true model: 
@@ -230,5 +251,5 @@ Finally, we analyse the relative average $L1$ distance between our estimators an
 mean(abs((ys_test - ys_lasso_pred)/ ys_test))
 ```
 
-which yield a more than reasonable value, since it's below $30\%$.
+which yields a more than reasonable value, since it's below $30\%$. Consequently, the final set obtained in this section, after performing _linear_, _best subset selection_, _log_, _polynomial_ , _stepwise AIC_ and _Lasso_ yielded a model that will be used in the following sections for more complex fits that will derive in our final model.
 
