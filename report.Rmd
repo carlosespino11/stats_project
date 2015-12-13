@@ -1,0 +1,52 @@
+---
+title: "Report"
+author: "Carlos Espino"
+date: "December 12, 2015"
+output: pdf_document
+---
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/',
+                      echo=FALSE, warning=FALSE, message=FALSE)
+```
+
+\section{Introduction}
+
+\section{Dataset}
+
+The dataset 
+
+| county   | county identifier                                                              |   |
+|----------|--------------------------------------------------------------------------------|---|
+| year     | year from 1981 to 1987                                                         |   |
+| crmrte   | crimes committed per person                                                    |   |
+| prbarr   | 'probability' of arrest                                                        |   |
+| prbconv  | 'probability' of conviction                                                    |   |
+| prbpris  | 'probability' of prison sentenc                                                |   |
+| avgsen   | average sentence, days                                                         |   |
+| polpc    | police per capita                                                              |   |
+| density  | people per square mile                                                         |   |
+| taxpc    | tax revenue per capita                                                         |   |
+| region   | one of 'other', 'west' or 'central'                                            |   |
+| smsa     | 'yes' or 'no' if in SMSA                                                       |   |
+| pctmin   | percentage minority in 1980 wcon weekly wage in construction                   |   |
+| wtuc     | weekly wage in trns, util, commun                                              |   |
+| wtrd     | weekly wage in whole sales and retail trade                                    |   |
+| wfir     | weekly wage in finance, insurance and real estate                              |   |
+| wser     | weekly wage in service industry                                                |   |
+| wmfg     | weekly wage in manufacturing                                                   |   |
+| wfed     | weekly wage of federal emplyees                                                |   |
+| wsta     | weekly wage of state employees                                                 |   |
+| wloc     | weekly wage of local governments employees mix offence mix: face-to-face/other |   |
+| pctymle  | percentage of young males                                                      |   |
+
+```{r}
+summary(cars)
+```
+
+You can also embed plots, for example:
+
+```{r, echo=FALSE}
+plot(cars)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
