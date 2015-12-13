@@ -7,6 +7,7 @@ library(caret)
 ######################################################################
 # Setup
 ######################################################################
+source("theme_fivethirtyeight.R")
 Crime <- read.csv("Crime.csv")
 Crime = Crime[,-1] # Remove the index column
 
@@ -351,7 +352,11 @@ lines(newdata.pctmin$x, pred$fit, lwd=2)
 lines(newdata.pctmin$x, pred$fit+2*pred$se, lty="dashed")
 lines(newdata.pctmin$x, pred$fit-2*pred$se, lty="dashed")
 
-ggplot() + geom_point(aes(x = Crime$pctmin, y = Crime$crmrte), color="darkgrey") + geom_line(aes(x = newdata.pctmin$x, y = pred$fit)) +
+ggplot() + geom_point(aes(x = Crime$pctmin, y = Crime$crmrte), color="darkgrey") + 
+  geom_ribbon(aes(x = newdata.pctmin$x, y = pred$fit, ymin= pred$fit-2*pred$se, ymax= pred$fit+2*pred$se), color="lightgrey", alpha =.15)+
+  geom_line(aes(x = newdata.pctmin$x, y = pred$fit), color="blue")+
   geom_line(aes(x = newdata.pctmin$x, y = pred$fit+2*pred$se), linetype = "dashed") +
-  geom_line(aes(x = newdata.pctmin$x, y = pred$fit-2*pred$se), linetype = "dashed") 
+  geom_line(aes(x = newdata.pctmin$x, y = pred$fit-2*pred$se), linetype = "dashed") +
+  labs(x="Proportion of minority in 1980 (%)", y="Crimes committed per person") +
+  theme_fivethirtyeight()
 
