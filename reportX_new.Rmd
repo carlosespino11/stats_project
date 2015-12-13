@@ -1,0 +1,168 @@
+---
+title: "Report"
+author: "Carlos Espino"
+date: "December 12, 2015"
+output: pdf_document
+---
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/',
+                      echo=FALSE, warning=FALSE, message=FALSE)
+```
+
+\section{Introduction}
+
+\section{Dataset}
+
+```{r, echo=FALSE}
+library(ISLR)
+library(leaps)
+#library(glmnet)
+library(rpart.plot)
+library(caret)
+library(MASS)
+library(GGally)
+library(grid)
+library(ggplot2)
+library(gridExtra)
+library(splines)
+library(caret)
+library(knitr)
+load("ggthemes_data.rda")
+
+######################################################################
+# Setup
+######################################################################
+source("theme_fivethirtyeight.R")
+Crime <- read.csv("Crime.csv")
+Crime = Crime[,-1] # Remove the index column
+
+# Identify and remove the outliers found from later analyses
+# fit.all <- lm(crmrte~bs(pctmin, knots=pctmin.knots) + log(prbconv) + log(polpc) + prbarr + density:county + prbarr:prbpris + pctmin:polpc + polpc:wfed + density:pctmin + density:pctymle + taxpc:wfed + region:wsta, data=Crime)
+bad = c(440,353,437,439)
+Crime = Crime[-bad,]
+```
+
+The dataset 
+
+| county   | county identifier                                                              |   |
+|----------|--------------------------------------------------------------------------------|---|
+| year     | year from 1981 to 1987                                                         |   |
+| crmrte   | crimes committed per person                                                    |   |
+| prbarr   | 'probability' of arrest                                                        |   |
+| prbconv  | 'probability' of conviction                                                    |   |
+| prbpris  | 'probability' of prison sentenc                                                |   |
+| avgsen   | average sentence, days                                                         |   |
+| polpc    | police per capita                                                              |   |
+| density  | people per square mile                                                         |   |
+| taxpc    | tax revenue per capita                                                         |   |
+| region   | one of 'other', 'west' or 'central'                                            |   |
+| smsa     | 'yes' or 'no' if in SMSA                                                       |   |
+| pctmin   | percentage minority in 1980 wcon weekly wage in construction                   |   |
+| wtuc     | weekly wage in trns, util, commun                                              |   |
+| wtrd     | weekly wage in whole sales and retail trade                                    |   |
+| wfir     | weekly wage in finance, insurance and real estate                              |   |
+| wser     | weekly wage in service industry                                                |   |
+| wmfg     | weekly wage in manufacturing                                                   |   |
+| wfed     | weekly wage of federal emplyees                                                |   |
+| wsta     | weekly wage of state employees                                                 |   |
+| wloc     | weekly wage of local governments employees mix offence mix: face-to-face/other |   |
+| pctymle  | percentage of young males                                                      |   |
+
+We analized the variables in the dataset starting with the target variable: 'crmrte', the crime rate. Along this study, we will use this variable in diferent forms. We define a categorical value equal to one representing high crime rate, when the value of the target variable is higher that its median value. Also, we will use the natural logarithm of the variable to adequately transform it be able to apply diferent statisticals models to predict and describe the data. The target variable behaviour is represented with a boxplot, a softened histogram and a softened histogram of the logarithm of the variable.
+
+```{r, echo=FALSE}
+#WE BUILD A CATEGORICAL VARIABLE WITH THE HIGHEST QUARTILE OF HIGH CRIME RATE
+boxplot_crmte_cat = function(variable, data = Crime){
+  plot_df= data.frame(y = data[,variable], x = data$crmrte_cat)
+  
+  plot = ggplot(plot_df) + geom_boxplot(aes(y= y, x = x, fill=x)) + 
+        theme_fivethirtyeight() + labs(title = variable, x= "crmrte_cat", y = variable )
+  
+  return(plot)
+}
+
+Crime$crmrte_cat <- rep('low/normal', length(Crime$crmrte))
+Crime$crmrte_cat[Crime$crmrte  > median(Crime$crmrte)] <- "high"
+
+ggplot() + geom_boxplot(aes(x=1, y=Crime$crmrte))+ labs(title='boxplot - crime rate')
+
+#histogram of the response variable
+ggplot() + geom_density(aes(x = Crime$crmrte), alpha=.3, fill = "grey") + xlab("Crimes per person") +
+  theme_fivethirtyeight()
+
+#histogram of the log of the response.
+ggplot() + geom_density(aes(x = Crime$crmrte), alpha=.3, fill = "grey") + xlab("log(Crimes per person)") +
+  scale_x_log10() +
+  theme_fivethirtyeight()
+```
+
+Besides the variable target, the dataset contains other 20 variables we used as predictors. Two of them have categorical values. The 'region' variable can have 3 possible values: 'other', 'west' or 'central' and the 'smsa' can have 'yes' or 'no'. The dataset also contains the 'year' variable which can be considered as a time reference. A short description of each variable can be found in the table above. Next, we plot some charts to explore the behaviour of the variables and their relation with the target.
+
+```{r, echo=FALSE}
+#we trace paired boxplots for all the variables
+
+grid.arrange(boxplot_crmte_cat(variable = "prbarr"), boxplot_crmte_cat("prbconv"), boxplot_crmte_cat("prbpris"),
+          boxplot_crmte_cat("avgsen"), boxplot_crmte_cat("polpc"),boxplot_crmte_cat("density"), ncol=3)
+
+grid.arrange(boxplot_crmte_cat(variable = "taxpc"), boxplot_crmte_cat("pctmin"), boxplot_crmte_cat("wcon"),
+             boxplot_crmte_cat("wtuc"), boxplot_crmte_cat("wfir"),boxplot_crmte_cat("wser"), ncol=3)
+
+grid.arrange(boxplot_crmte_cat(variable = "wmfg"), boxplot_crmte_cat("wfed"), boxplot_crmte_cat("wsta"),
+             boxplot_crmte_cat("wloc"), boxplot_crmte_cat("mix"),boxplot_crmte_cat("pctymle"), ncol=3)
+
+```
+
+From the boxplot above, we can see that the variables that may have a predictive value with the target are variable 'prbarr', 'density', 'pctmin', 'wfed', 'wmfg' and 'pctymle' as they separate partialy the populations by the value of the target variable defined. In regards to the rest of the predictors, we explore them tracing these folowing charts. We start from the variable 'year'.
+
+```{r, echo=FALSE}
+ggplot(Crime) + geom_bar(aes(x =factor(year), fill=crmrte_cat )) +
+  scale_fill_fivethirtyeight("cyl") + theme_fivethirtyeight() + xlab("year")
+#no significance difference
+```
+
+We comment on avobe plot that there is no sifnificance trend on the crime rate along the time line considered. The other two variables with categorical values are 'region' and 'smsa'.
+
+```{r, echo=FALSE}
+ggpairs(Crime[,c( 'region','crmrte_cat')])+
+  theme_fivethirtyeight()
+#candidate to test anova region west
+
+ggpairs(Crime[,c( 'smsa','crmrte_cat')])+
+  theme_fivethirtyeight()
+#smsa yes with high rate.
+```
+
+In these two chart above we see an decrease in the crime rate when the variable 'region' takes value 'west' and when the 'smsa' variable takes the value 'yes'.
+In this sense, we continue to explore further the relationtship between these two categorical variables and the target variable by implementing method ANOVA. We fit an analysis of variance model by call to a linear regression for each stratum.
+
+In the first analisys, we consider the variable 'region' and separate their possible values ('west', 'central' and 'other') into ('w' and 'nw'). We obtain the following output.
+
+```{r, echo=FALSE}
+Crime$crmrte_cat <- as.factor(Crime$crmrte_cat)
+Crime$region_w_nw <- rep('nw', length(Crime$crmrte_cat))
+Crime$region_w_nw[Crime$region=='west'] <- 'w'
+Crime$region_w_nw <- as.factor(Crime$region_w_nw)
+
+fit.anova <- aov(crmrte ~ region_w_nw, data=Crime)
+summary(fit.anova)
+```
+
+The result show a very low p-value, which means that the model considerign diferent populations is acurate. We can compare the means of the crime rate between the 'west' region and other regions.
+
+```{r, echo=FALSE}
+#compare the means
+tapply(Crime$crmrte,Crime$region_w_nw, mean)
+```
+
+Now, we can repeat the same analisis considering two factors. We include the other categorical variable: 'smsa'
+
+```{r, echo=FALSE}
+fit.anova2 <- aov(crmrte ~ region_w_nw + smsa, data=Crime)
+summary(fit.anova2)
+```
+
+Again we obtain a good p-valio for each of the variables. 
+
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
