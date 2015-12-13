@@ -18,8 +18,8 @@ theme_fivethirtyeight <- function(base_size = 13, base_family = "") {
       plot.title =        element_text(size = rel(1.5), family = '' , 
                                        face = 'bold', hjust = -0.05, 
                                        vjust = 1.5, colour = '#3B3B3B'),
-      axis.title.x =      element_blank(),
-      axis.title.y =      element_blank(),
+      # axis.title.x =      element_blank(),
+      # axis.title.y =      element_blank(),
       axis.text =         element_text(),
       
       # Modified inheritance structure of line element
