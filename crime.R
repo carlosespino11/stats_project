@@ -1,6 +1,8 @@
 library(ISLR)
 library(leaps)
 library(glmnet)
+library(rpart.plot)
+library(caret)
 
 #################
 # Xavi's code
@@ -284,6 +286,20 @@ mean(abs((pred3$fit - crime.actual)/crime.actual))
 #################
 # Comparison without splines
 #################
+
+
+fit <-rpart(crmrte_cat ~.,data=dataset[-test,-4])
+rpplot(fit)
+pred.fit <- predict(fit,newdata=dataset[test,-4])
+pred.class <- rep('low/normal', length(crmrte_cat))
+pred.class[pred.fit[,'high']>0.5] <- 'high'
+confusionMatrix(pred.class,crmrte_cat)
+
+fit.reg <-rpart(crmrte_cat ~.,data=dataset[-test,-4])
+pred.fit <- predict(fit.reg,newdata=dataset[test,-4])
+pred.class <- rep('low/normal', length(crmrte_cat))
+pred.class[pred.fit[,'high']>0.5] <- 'high'
+confusionMatrix(pred.class,crmrte_cat)
 
 
 
