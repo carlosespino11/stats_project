@@ -1,41 +1,53 @@
-library(grid)
-
-theme_fivethirtyeight <- function(base_size = 13, base_family = "") {
-  theme_grey(base_size = base_size, base_family = base_family) %+replace%
-    theme(
-      
-      # Base elements which are not used directly but inherited by others
-      line =              element_line(colour = '#DADADA', size = 0.75, 
-                                       linetype = 1, lineend = "butt"),
-      rect =              element_rect(fill = "#F0F0F0", colour = "#F0F0F0", 
-                                       size = 0.5, linetype = 1),
-      text =              element_text(family = base_family, face = "plain",
-                                       colour = "#656565", size = base_size,
-                                       hjust = 0.5, vjust = 0.5, angle = 0, 
-                                       lineheight = 0.9),
-      
-      # Modified inheritance structure of text element
-      plot.title =        element_text(size = rel(1.5), family = '' , 
-                                       face = 'bold', hjust = -0.05, 
-                                       vjust = 1.5, colour = '#3B3B3B'),
-      # axis.title.x =      element_blank(),
-      # axis.title.y =      element_blank(),
-      axis.text =         element_text(),
-      
-      # Modified inheritance structure of line element
-      axis.ticks =        element_line(),
-      panel.grid.major =  element_line(),
-      panel.grid.minor =  element_blank(),
-      
-      # Modified inheritance structure of rect element
-      plot.background =   element_rect(),
-      panel.background =  element_rect(),
-      legend.key =        element_rect(colour = '#DADADA'),
-      
-      # Modifiying legend.position
-      legend.position = 'none',
-      
-      complete = TRUE
-    )
+theme_fivethirtyeight <- function(base_size = 12, base_family = "sans") {
+  (theme_foundation(base_size = base_size, base_family = base_family)
+   + theme(
+     line = element_line(colour = "black"),
+     rect = element_rect(fill = ggthemes_data$fivethirtyeight['ltgray'],
+                         linetype = 0, colour = NA),
+     text = element_text(colour = ggthemes_data$fivethirtyeight['dkgray']),
+     # axis.title = element_blank(),
+     # axis.text = element_text(),
+     axis.ticks = element_blank(),
+     axis.line = element_blank(),
+     legend.background = element_rect(),
+     legend.position = "bottom",
+     legend.direction = "horizontal",
+     legend.box = "vertical",
+     panel.grid = element_line(colour = NULL),
+     panel.grid.major =
+       element_line(colour = ggthemes_data$fivethirtyeight['medgray']),
+     panel.grid.minor = element_blank(),
+     # unfortunately, can't mimic subtitles
+     plot.title = element_text(hjust = 0, size = rel(1.5), face = "bold"),
+     plot.margin = unit(c(1, 1, 1, 1), "lines"),
+     strip.background=element_rect()))
 }
 
+
+fivethirtyeight_pal <- function() {
+  function(n) {
+    colors <- ggthemes_data$fivethirtyeight[c('blue', 'red', 'green')]
+    unname(colors[seq_len(n)])
+  }
+}
+
+scale_colour_fivethirtyeight <- function(...) {
+  discrete_scale("colour", "economist", fivethirtyeight_pal(), ...)
+}
+
+scale_fill_fivethirtyeight <- function(...) {
+  discrete_scale("fill", "economist", fivethirtyeight_pal(), ...)
+}
+
+theme_foundation <- function(base_size=12, base_family="") {
+  thm <- theme_gray(base_size = base_size, base_family = base_family)
+  for (i in names(thm)) {
+    if ("colour" %in% names(thm[[i]])) {
+      thm[[i]]["colour"] <- list(NULL)
+    }
+    if ("fill" %in% names(thm[[i]])) {
+      thm[[i]]["fill"] <- list(NULL)
+    }
+  }
+  thm
+}

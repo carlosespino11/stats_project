@@ -10,6 +10,7 @@ library(gridExtra)
 ######################################################################
 # Setup
 ######################################################################
+load("ggthemes_data.rda")
 source("theme_fivethirtyeight.R")
 Crime <- read.csv("Crime.csv")
 Crime = Crime[,-1] # Remove the index column
@@ -51,9 +52,10 @@ Crime = Crime[-bad,]
 #WE BUILD A CATEGORICAL VARIABLE WITH THE HIGHEST QUARTILE OF HIGH CRIME RATE
 Crime$crmrte_cat <- rep('low/normal', length(Crime$crmrte))
 Crime$crmrte_cat[Crime$crmrte  > median(Crime$crmrte)] <- "high"
+Crime$crmrte_cat <- ordered(Crime$crmrte_cat, levels = c("low/normal", "high"))
+
 
 #histogram of the response variable
-par(mfrow=c(1,1) )
 
 ggplot() + geom_density(aes(x = Crime$crmrte), alpha=.3, fill = "grey") + xlab("Crimes per person") +
   theme_fivethirtyeight()
@@ -70,9 +72,10 @@ ggplot() + geom_density(aes(x = Crime$crmrte), alpha=.3, fill = "grey") + xlab("
 
 boxplot_crmte_cat = function(variable, data = Crime){
   plot_df= data.frame(y = data[,variable], x = data$crmrte_cat)
-  
   plot = ggplot(plot_df) + geom_boxplot(aes(y= y, x = x, fill=x)) + 
-        theme_fivethirtyeight() + labs(title = variable, x= "crmrte_cat", y = variable )
+        theme_fivethirtyeight() + labs(title = variable, x= "crmrte_cat", y = variable )+
+        scale_fill_fivethirtyeight("cyl")+
+        theme(legend.position="none")
   
   return(plot)
 }
@@ -94,9 +97,9 @@ grid.arrange(boxplot_crmte_cat(variable = "wmfg"), boxplot_crmte_cat("wfed"), bo
 #'wfed' and 'wmfg' may have a predictive value
 
 #timeline of crime rate by year
-y1 <- table(Crime[Crime$crmrte_cat=='high','year'])
-y2 <- table(Crime[Crime$crmrte_cat!='high','year'])
-barplot(t(cbind(y1,y2)), legend=c('high','low/normal'))
+
+ggplot(Crime) + geom_bar(aes(x =factor(year), fill=crmrte_cat )) +
+  scale_fill_fivethirtyeight("cyl") + theme_fivethirtyeight()
 #no significance difference
 
 ggpairs(Crime[,c( 'region','crmrte_cat')])
