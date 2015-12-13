@@ -274,40 +274,71 @@ mean(abs((ys_test - ys_lasso_pred)/ ys_test))
 # Splines
 ######################################################################
 library(splines)
+library(caret)
+
+# k-Folds (k=10)
+folds <- createFolds(Crime$pctmin, k=10, list=TRUE, returnTrain=FALSE)
+
+# Spline function
+pctmin.knots = attr(bs(Crime$pctmin, df=9), "knots")
 
 # Sort for plotting later
 newdata.pctmin = sort(Crime[test,]$pctmin, index.return=TRUE)
 crime.actual = (Crime[test,]$crmrte)[newdata.pctmin$ix]
 
-# Only $pctmin
-pctmin.knots = attr(bs(Crime$pctmin, df=10), "knots")
+# Only linear $pctmin
+fit.pctmin = lm(crmrte ~ pctmin, data=Crime[-test,])
+pred.pctmin = predict(fit.pctmin, newdata=(Crime[test,])[newdata.pctmin$ix,], se.fit=T)
+error.pctmin = mean(abs((pred.pctmin$fit - crime.actual)/crime.actual))
+
+# Only poly $pctmin
+fit.pctmin.poly = lm(crmrte ~ poly(pctmin,4), data=Crime[-test,])
+pred.pctmin.poly = predict(fit.pctmin.poly, newdata=(Crime[test,])[newdata.pctmin$ix,], se.fit=T)
+error.pctmin.poly = mean(abs((pred.pctmin.poly$fit - crime.actual)/crime.actual))
+
+# Only splines $pctmin
+#pctmin.knots = attr(smooth.spline(Crime$pctmin, cv=TRUE), "knots")
 fit.splines = lm(crmrte~bs(pctmin, knots=pctmin.knots), data=Crime[-test,])
 pred = predict(fit.splines, newdata=list(pctmin = newdata.pctmin$x), se.fit=T)
-
-plot(Crime$pctmin,Crime$crmrte,col="gray")
-lines(newdata.pctmin$x, pred$fit, lwd=2)
-lines(newdata.pctmin$x, pred$fit+2*pred$se, lty="dashed")
-lines(newdata.pctmin$x, pred$fit-2*pred$se, lty="dashed")
-
-# (1/length(crime.actual)) * sum((pred$fit - crime.actual)^2) # MSE
-mean(abs((pred$fit - crime.actual)/crime.actual)) # Percent error
+error.pctmin.splines = mean(abs((pred$fit - crime.actual)/crime.actual))
 
 # $pctmin spline with $density, prbarr, wfed
 fit.splines.2 = lm(crmrte~bs(pctmin, knots=pctmin.knots)+density+prbarr+wfed, data=Crime[-test,])
 pred2 = predict(fit.splines.2, newdata=(Crime[test,])[newdata.pctmin$ix,], se.fit=T)
-mean(abs((pred2$fit - crime.actual)/crime.actual))
+error.pctmin.plus = mean(abs((pred2$fit - crime.actual)/crime.actual))
 
 # $pctmin spline with Diego's predictors
-fit.splines.3 = lm(crmrte~bs(pctmin, knots=pctmin.knots)+log(prbconv) + log(polpc) + prbarr + density:county + prbarr:prbpris + pctmin:polpc + polpc:wfed + density:pctmin + density:pctymle + taxpc:wfed + region:wsta, data=Crime[-test,])
+fit.splines.3 = lm(crmrte~bs(pctmin, knots=pctmin.knots) + log(prbconv) + log(polpc) + prbarr + density:county + prbarr:prbpris + pctmin:polpc + polpc:wfed + density:pctmin + density:pctymle + taxpc:wfed + region:wsta, data=Crime[-test,])
 pred3 = predict(fit.splines.3, newdata=(Crime[test,])[newdata.pctmin$ix,], se.fit=T)
-mean(abs((pred3$fit - crime.actual)/crime.actual))
+error.pctmin.overall = mean(abs((pred3$fit - crime.actual)/crime.actual))
+
+# $pctmin poly with Diego's predictors
+fit.poly.4 = lm(crmrte~poly(pctmin,4) + log(prbconv) + log(polpc) + prbarr + density:county + prbarr:prbpris + pctmin:polpc + polpc:wfed + density:pctmin + density:pctymle + taxpc:wfed + region:wsta, data=Crime[-test,])
+pred4 = predict(fit.poly.4, newdata=(Crime[test,])[newdata.pctmin$ix,], se.fit=T)
+error.pctmin.overall.poly = mean(abs((pred4$fit - crime.actual)/crime.actual))
+
+# k-Folds with everything
+df = seq(3, 50)
+results.overall = vector()
+for (j in 1:length(df)) {
+  pctmin.knots = attr(bs(Crime$pctmin, df=df[j]), "knots")
+  kfolds.results = vector()
+  for (i in 1:length(folds)) {
+    fit.splines <- lm(crmrte~bs(pctmin, knots=pctmin.knots) + log(prbconv) + log(polpc) + prbarr + density:county + prbarr:prbpris + pctmin:polpc + polpc:wfed + density:pctmin + density:pctymle + taxpc:wfed + region:wsta, data=Crime[-folds[[i]],])
+    pred.spline <- predict(fit.splines, newdata=Crime[folds[[i]],], se.fit=T)
+    kfolds.results[i] = mean(abs((pred.spline$fit - Crime[folds[[i]],]$crmrte)/Crime[folds[[i]],]$crmrte))
+    print(paste("Fold", i, "accuracy:", kfolds.results[i]))
+  }
+  results.overall = c(results.overall, mean(kfolds.results))
+}
 
 #################
-# Comparison without splines
+# Plot
 #################
-
-
-
+plot(Crime$pctmin,Crime$crmrte,col="gray")
+lines(newdata.pctmin$x, pred$fit, lwd=2)
+lines(newdata.pctmin$x, pred$fit+2*pred$se, lty="dashed")
+lines(newdata.pctmin$x, pred$fit-2*pred$se, lty="dashed")
 
 
 
