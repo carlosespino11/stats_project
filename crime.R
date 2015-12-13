@@ -152,6 +152,25 @@ wct <- wilcox.test(crmrte_l, conf.int = TRUE)
 exp(wct$conf.int)
 wct$p.value
 
+#fit some models
+test = sample(nrow(Crime), nrow(Crime)*.2)
+
+#decision tree
+fit <-rpart(crmrte_cat ~.,data=dataset[-test,-4])
+rpplot(fit)
+pred.fit <- predict(fit,newdata=dataset[test,-4])
+pred.class <- rep('low/normal', length(crmrte_cat))
+pred.class[pred.fit[,'high']>0.5] <- 'high'
+confusionMatrix(pred.class,crmrte_cat)
+
+#logistic regression
+fit.reg <-glm(crmrte_cat ~.,data=dataset[-test,-4], family=binomial)
+pred.fit <- predict(fit.reg,newdata=dataset[test,-4], type='response')
+pred.class <- rep('low/normal', length(crmrte_cat))
+pred.class[pred.fit>0.5] <- 'high'
+confusionMatrix(pred.class,crmrte_cat)
+fit.reg
+
 
 ###################################
 # Testing and training set creation
@@ -288,18 +307,9 @@ mean(abs((pred3$fit - crime.actual)/crime.actual))
 #################
 
 
-fit <-rpart(crmrte_cat ~.,data=dataset[-test,-4])
-rpplot(fit)
-pred.fit <- predict(fit,newdata=dataset[test,-4])
-pred.class <- rep('low/normal', length(crmrte_cat))
-pred.class[pred.fit[,'high']>0.5] <- 'high'
-confusionMatrix(pred.class,crmrte_cat)
 
-fit.reg <-rpart(crmrte_cat ~.,data=dataset[-test,-4])
-pred.fit <- predict(fit.reg,newdata=dataset[test,-4])
-pred.class <- rep('low/normal', length(crmrte_cat))
-pred.class[pred.fit[,'high']>0.5] <- 'high'
-confusionMatrix(pred.class,crmrte_cat)
+
+
 
 
 
