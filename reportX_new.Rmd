@@ -43,7 +43,7 @@ bad = c(440,353,437,439)
 Crime = Crime[-bad,]
 ```
 
-The dataset contains a total of 626 observations. 3 outliers were removed according to the result of a residual analysis in a linear regression. We considered them as not representative of the data. 
+The dataset we will use as source as a study contains a total of 626 observations, 3 of them were considered as outliers and were removed according to the result of a residual analysis in a linear regression section. The columns of the data are showed below.
 
 | county   | county identifier                                                              |   |
 |----------|--------------------------------------------------------------------------------|---|
@@ -69,7 +69,7 @@ The dataset contains a total of 626 observations. 3 outliers were removed accord
 | wloc     | weekly wage of local governments employees mix offence mix: face-to-face/other |   |
 | pctymle  | percentage of young males                                                      |   |
 
-We analized the variables in the dataset starting with the target variable: 'crmrte', the crime rate. Along this study, we will use this variable in diferent forms. We define a categorical value equal to one representing high crime rate, when the value of the target variable is higher that its median value. Also, we will use the natural logarithm of the variable to adequately transform it be able to apply diferent statisticals models to predict and describe the data. The target variable behaviour is represented with a boxplot, a softened histogram and a softened histogram of the logarithm of the variable.
+We analized the variables in the dataset starting with the target variable: 'crmrte', the crime rate. Along this study, we will use this variable in diferent forms. We define a categorical value equal to one representing high crime rate, when the value of the target variable is higher that its median value. Also, we will use the natural logarithm of the variable to adequately transform it be able to apply diferent statisticals models to predict and describe the data. We assume that the target value depends on the other variables. The behaviour of the target is represented with a boxplot, a softened histogram and a softened histogram of the logarithm of the variable.
 
 ```{r, echo=FALSE}
 boxplot_crmte_cat = function(variable, data = Crime){
@@ -123,7 +123,8 @@ From the boxplot above, we can see that the variables that may have a predictive
 
 ```{r, echo=FALSE}
 ggplot(Crime) + geom_bar(aes(x =factor(year), fill=crmrte_cat )) +
-  scale_fill_fivethirtyeight("cyl") + theme_fivethirtyeight() + xlab("year")
+  scale_fill_fivethirtyeight("cyl") + theme_fivethirtyeight() + labs(title='Crime Rate by Year', x = "Crime Rate")
+  
 #no significance difference
 ```
 
@@ -145,7 +146,14 @@ grid.arrange(crime_region, crime_smsa, ncol=2)
 ```
 
 In these two charts above we see an decrease in the crime rate when the variable 'region' takes value 'west' and when the 'smsa' variable takes the value 'yes'.
-In this sense, we continue to explore further the relationtship between these two categorical variables and the target variable by implementing method ANOVA. We fit an analysis of variance model by call to a linear regression for each stratum.
+In this sense, we continue to explore further the relationtship between these two categorical variables and the target variable by implementing method ANOVA in next section, but first we analize the variances and covariances between all predictors. We trace a paired graph with some selected variables to preliminary explore the correlation between the variables.
+
+```{r, echo=FALSE, fig.width=15,fig.height=15}
+covar <- Crime[,c('prbarr','prbpris', 'density', 'pctmin', 'wfir', 'wmfg', 'wfed', 'region', 'smsa','crmrte')]
+ggpairs(covar) + theme_fivethirtyeight()
+```
+
+In the graphs avobe we can find the correlations between the selected predictors and the correlations between the predictors and the target. The highest value of correlation is given by the target and 'density' variable, which is very positive for building predicting models. Another high values of correlation are among variables 'wmfg', 'wfed' and 'density'. These high correlations will be analized further when we cover the variables selection for modelling.
 
 \section{ANOVA models}
 
@@ -168,6 +176,15 @@ The result show a very low p-value, which means that the model considerign difer
 tapply(Crime$crmrte,Crime$region_w_nw, mean)
 ```
 
+Considerign above analysis, we can assume that a model can shape correclty the value of the median in each region: ('west', 'other'). The coefficient of the model can be extacted from the fit value retuned in the package.
+```{r, echo=FALSE}
+#compare the means
+fit.anova$coefficients
+```
+The model is given by
+
+Mean(crmrte) = 0.03475108  - 0.01487221*I (region='w')
+
 Now, we repeat the same analisis considering two factors. We include also the other categorical variable: 'smsa'. We fit an ANOVA model and we get the followign output. 
 
 ```{r, echo=FALSE}
@@ -175,7 +192,12 @@ fit.anova2 <- aov(crmrte ~ region_w_nw + smsa, data=Crime)
 summary(fit.anova2)
 ```
 
-Again we obtain a good p-valio for each of the two variables, which means that both factors have a strong relation with the variable. The hypotesis null that the medians are equals is rejected.
+Again, we obtain a good p-valio for each of the two variables, which means that both factors have a strong relation with the variable. The hypotesis null that the medians are equals is rejected.
+The coeficients in this case are
+```{r, echo=FALSE}
+#compare the means
+fit.anova2$coefficients
+```
 Besides the two categorical variables, we can include in the analysis of the variance the interaction efect between the two variables. 
 
 ```{r, echo=FALSE}
@@ -201,12 +223,13 @@ We can simply obtain a confidence interval arround that value. Considering the b
 the kth values that returns that interval are k= 
 ```{r, echo=FALSE}
 k<- 260+c(23,30,35,38) # probabilities 99%; 95%; 88%; 81%;
+k
 ```
 From the vector of sorted values of crime rate, we select the kth elements of the vector and the n-k+1 elements correspondigly to have the four confidence intervals correspondingly. 
 
 ```{r, echo=FALSE}
 n <- 626
-1 - 2 * pbinom(k, n, 1 / 2)
+#1 - 2 * pbinom(k, n, 1 / 2)
 perc <- c(0.99,0.95,0.88,0.81)
 col_nam <- c('signif.%', 'low.level', 'up.level')
 conf_i <- matrix(0,nrow=4,ncol=3)
@@ -217,13 +240,47 @@ colnames(conf_i) <- col_nam
 kable(conf_i)
 ```
 
-A more sofisticated method to obtain the confidence interval for the median
+A more sofisticated method to obtain the confidence interval for the median is the Wilcoxon Signed Rank Tests for the same confidence levels to get the confidence intervals. As the Wilcoxon test assumes symetry in the distribution of the variable we applied it to the logarithm of the variable target, as discussed avobe.
 
 ```{r, echo=FALSE}
-
+#run the wilcox test
+crmrte_l <- log(Crime$crmrte)
+perc <- c(0.99,0.95,0.88,0.81)
+col_nam <- c('signif.%', 'low.level', 'up.level')
+conf_iw <- matrix(0,nrow=4,ncol=3)
+for (i in 1:4){
+  wct <- wilcox.test(crmrte_l, conf.int = TRUE,alternative = "two.sided",conf.level=perc[i])
+  conf_iw[i,1] <-perc[i]
+  conf_iw[i,2:3] <- exp(wct$conf.int)
+}
+colnames(conf_iw) <- col_nam
+kable(conf_iw)
 ```
 
+The results are similar to the simpler sign test.
+
+\section{Predictive Models to Analize the dependence between the variables}
+
+To complete the analysis of the variables and their relation with the target we run two predictive models: a decision tree and a logistic regression. We consider the variable target in the categorical format. The aim of these modeling is explore further the data and understand which variables are relevant. 
 ```{r, echo=FALSE}
-
+n=626
+test = sample(c(T,F),size=n,prob=c(0.4,0.6),replace=TRUE)
+fit <-rpart(crmrte_cat ~prbarr+prbpris+density+pctmin+wfir+wmfg+wfed+region+smsa,data=Crime[-test,]
+             ,control= rpart.control(minbucket = 60, maxdepth =5, xval=10, cp=0.05)
+           )
+y <- 1-fit$frame$yval2[,5]
+cols <- rgb(1,y,y)
+prp(fit, type=0, extra=1, under=TRUE, uniform=TRUE,
+    
+    branch.col=cols, box.col=cols, branch.type=5, yesno=FALSE, faclen=0 
+    
+    #main=paste("Candidate Strategy #",uu2[1,2])
+)
+pred.fit <- predict(fit,newdata=Crime[test,])
+#cbind(pred.fit,Crime[test,'crmrte_cat'] )
+pred.class <- rep('low/normal', length(Crime[test,'crmrte_cat']))
+pred.class[pred.fit[,'high']>0.5] <- 'high'
+confusionMatrix(pred.class,Crime[test,'crmrte_cat'])
 ```
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+We get an accuracy of 83% in testing and we verify that the variables most relevant to the target are: region and density.
