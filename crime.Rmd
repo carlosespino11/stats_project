@@ -3,19 +3,24 @@ title: "Untitled"
 output: pdf_document
 ---
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+# Linear analysis
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+Additionally, we considered a standard _linear regression_ model involving all predictors, as an alternative means to view the significance of each predictor. Note that in this context, performing _k-fold cross-validation_ or _bootstrapping_ wouldn't allow us to come up with an "averaged" subset, hence we performed an ordinary $80/20$ splitting of the data into the testing an training as shown in the code below: 
 
 ```{R}
-set.seed(1)
-library(ISLR)
-library(leaps)
-setwd("~/Documents/workspace/stats_project/")
-Crime <- read.csv("Crime.csv")
-library(glmnet)
-lm.fit = lm(crmrte ~ ., data = Crime)
+test = sample(nrow(Crime), nrow(Crime)*.2)
+excluded = c("crmrte", "crmrte_cat", "region_w_nw")
+xs = Crime[-which(names(Crime) %in% excluded)]
+ys = Crime[which(names(Crime) %in% c("crmrte"))]
+xs_test = xs[test,]
+xs_train = xs[-test,]
+ys_test = ys[test,]
+ys_train = ys[-test,]
+p = dim(xs)[2]
 ```
+
+Once the code in 
+
 
 ```{R}
 test = sample(630,126)

@@ -62,7 +62,7 @@ as the $R^2$ value is sufficiently high (`r summary(lm.fit)$r.squared`), we deci
 bestsubset=regsubsets(y ~ ., data = data.frame(y = ys_train, x = xs_train), nvmax = p)
 ```
 
-After getting all best subsets with size $k = 1...p$, we analysed both the _training RSE_ and _testing RSE_: 
+After getting all best subsets with size $k = 1...p$, we analysed both the _training RSE_ and _testing RSE_ by performing _k-fold cross validation_ with $k = 10$ and then getting the minimum errors on all iterations: 
 
 
 ```{R}
