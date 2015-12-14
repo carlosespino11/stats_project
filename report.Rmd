@@ -1,34 +1,38 @@
 ---
 title: "Report"
-author: "Carlos Espino"
-date: "December 12, 2015"
-output: pdf_document
+author: "Carlos Espino, Xavier Gonzalez, Diego Llarrull, Woojin Kim"
+date: "December 14, 2015"
+graphics: yes
+output:
+  pdf_document:
+    toc: true
 ---
 ```{r global_options, include=FALSE}
 knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/',
                       echo=FALSE, warning=FALSE, message=FALSE)
 ```
+\clearpage
 
-\section{Introduction}
+# Introduction
+Understanding the factors behind criminal behaviour is one of the most crucial tasks for preventing and controlling future crime. In this report, we explore the potential factors affecting crime rates based on the demographics and econometrics data gathered from 197 counties in North Carolina from 1981 to 1987. Using various statistical methods and modeling techniques, we analyze and identify the most important factors and metrics tied to crime rates. We also present a predictive model capable of estimating the crime rate with under 25% error using the selected parameters.
 
-\section{Dataset}
-
-The dataset 
-
-| county   | county identifier                                                              |   |
+# Dataset
+| Predictor| Description                                                                    |   |
 |----------|--------------------------------------------------------------------------------|---|
+| county   | county identifier                                                              |   |
 | year     | year from 1981 to 1987                                                         |   |
 | crmrte   | crimes committed per person                                                    |   |
 | prbarr   | 'probability' of arrest                                                        |   |
 | prbconv  | 'probability' of conviction                                                    |   |
-| prbpris  | 'probability' of prison sentenc                                                |   |
+| prbpris  | 'probability' of prison sentence                                               |   |
 | avgsen   | average sentence, days                                                         |   |
 | polpc    | police per capita                                                              |   |
 | density  | people per square mile                                                         |   |
 | taxpc    | tax revenue per capita                                                         |   |
 | region   | one of 'other', 'west' or 'central'                                            |   |
 | smsa     | 'yes' or 'no' if in SMSA                                                       |   |
-| pctmin   | percentage minority in 1980 wcon weekly wage in construction                   |   |
+| pctmin   | percentage minority in 1980                                                    |   |
+| wcon     | weekly wage in construction                                                    |   |
 | wtuc     | weekly wage in trns, util, commun                                              |   |
 | wtrd     | weekly wage in whole sales and retail trade                                    |   |
 | wfir     | weekly wage in finance, insurance and real estate                              |   |
@@ -38,15 +42,689 @@ The dataset
 | wsta     | weekly wage of state employees                                                 |   |
 | wloc     | weekly wage of local governments employees mix offence mix: face-to-face/other |   |
 | pctymle  | percentage of young males                                                      |   |
-
-```{r}
-summary(cars)
-```
-
-You can also embed plots, for example:
+\begin{center}Table 1: Description of the predictors in the dataset\end{center}
 
 ```{r, echo=FALSE}
-plot(cars)
+library(ISLR)
+library(leaps)
+library(glmnet)
+library(caret)
+library(MASS)
+library(grid)
+library(ggplot2)
+library(splines)
+library(caret)
+library(knitr)
+library(rpart.plot)
+library(GGally)
+library(gridExtra)
+library(broom)
+
+
+load("ggthemes_data.rda")
+source("theme_fivethirtyeight.R")
+Crime <- read.csv("Crime.csv")
+Crime = Crime[,-1] # Remove the index column
+
+# Identify and remove the outliers found from later analyses
+# fit.all <- lm(crmrte~bs(pctmin, knots=pctmin.knots) + log(prbconv) + log(polpc) + prbarr + density:county + prbarr:prbpris + pctmin:polpc + polpc:wfed + density:pctmin + density:pctymle + taxpc:wfed + region:wsta, data=Crime)
+bad = c(440,353,437,439)
+Crime = Crime[-bad,]
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+We analyzed the variables in the dataset starting with the target variable: `crmrte`, the crime rate. Along this study, we will use this variable in different forms. We define a categorical value equal to one representing high crime rate, when the value of the target variable is higher that its median value. We called this variable `crmrte_cat`. Also, we will use the natural logarithm of the variable to adequately transform it to apply different statisticals models to predict and describe the data. We assume that the target value depends on the other variables. The behaviour of the target is represented with a boxplot, a softened histogram of the variable, and a softened histogram of the logarithm of the variable.
+
+```{r, echo=FALSE}
+boxplot_crmte_cat = function(variable, data = Crime){
+  plot_df= data.frame(y = data[,variable], x = data$crmrte_cat)
+  plot = ggplot(plot_df) + geom_boxplot(aes(y= y, x = x, fill=x)) + 
+        theme_fivethirtyeight() + labs(title = variable, x= "crmrte_cat", y = variable )+
+        scale_fill_fivethirtyeight("cyl")+
+        theme(legend.position="none")
+  
+  return(plot)
+}
+
+Crime$crmrte_cat <- rep('low/normal', length(Crime$crmrte))
+Crime$crmrte_cat[Crime$crmrte  > median(Crime$crmrte)] <- "high"
+Crime$crmrte_cat <- ordered(Crime$crmrte_cat, levels = c("low/normal", "high"))
+
+boxplot = ggplot() + geom_boxplot(aes(x=factor(1), y=Crime$crmrte), alpha=.3, fill = "grey") + 
+  labs(title = 'boxplot - crime rate', y = "Crime Rate")+ 
+  theme_fivethirtyeight() +theme(axis.text.x = element_blank(), axis.text.x = element_blank(), axis.title.x = element_blank())
+
+#histogram of the response variable
+densityplot = ggplot() + geom_density(aes(x = Crime$crmrte), alpha=.3, fill = "grey") + 
+  theme_fivethirtyeight()+ labs(title = 'density - crime rate', x = "Crime Rate")
+
+#histogram of the log of the response.
+logdensity_plot = ggplot() + geom_density(aes(x = Crime$crmrte), alpha=.3, fill = "grey") + 
+  scale_x_log10() +
+  theme_fivethirtyeight() +
+  labs(title = "density - log(crime rate)", x = "log(crime rate)")
+
+grid.arrange(boxplot, densityplot, logdensity_plot, ncol=3)
+```
+
+Besides the target variable, the dataset contains other 21 variables we used as predictors. Two of them have categorical values. The `region` variable can have 3 possible values: `other`, `west` or `central` and the `smsa` can have `yes` or `no`. The dataset also contains the `year` variable which can be considered as a time reference. A short description of each variable can be found in the table above. Next, we plot some charts to explore the behaviour of the variables and their relationships with the target.
+
+```{r, echo=FALSE}
+#we trace paired boxplots for all the variables
+
+grid.arrange(boxplot_crmte_cat(variable = "prbarr"), boxplot_crmte_cat("prbconv"),
+             boxplot_crmte_cat("prbpris"), boxplot_crmte_cat("avgsen"),
+             boxplot_crmte_cat("polpc"),boxplot_crmte_cat("density"),ncol=3)
+grid.arrange(boxplot_crmte_cat("taxpc"), boxplot_crmte_cat("pctmin"),
+             boxplot_crmte_cat("wcon"), boxplot_crmte_cat("wtuc"),       
+          boxplot_crmte_cat("wfir"),boxplot_crmte_cat("wser"),ncol=3)
+grid.arrange(boxplot_crmte_cat("wmfg"),boxplot_crmte_cat("wfed"), boxplot_crmte_cat("wsta"),
+          boxplot_crmte_cat("wloc"), boxplot_crmte_cat("mix"),boxplot_crmte_cat("pctymle"), ncol=3)
+
+```
+
+In the boxplots above, we can see that the variables that may have a predictive value with the target are variables `prbarr`, `density`, `pctmin`, `wfed`, `wmfg` and `pctymle` as they separate the population partially by the value of the defined target variable. We explore the rest of the predictors by tracing them on the following charts, starting with the variable `year`.
+
+```{r, echo=FALSE}
+ggplot(Crime) + geom_bar(aes(x =factor(year), fill=crmrte_cat )) +
+  scale_fill_fivethirtyeight("cyl") + theme_fivethirtyeight() + labs(title='Crime Rate by Year', x = "Crime Rate")
+  
+#no significance difference
+```
+
+From the above plot, we notice that there is no significant trend on the crime rate along the timeline being considered. The other two variables with categorical values are `region` and `smsa`.
+
+```{r, echo=FALSE}
+
+
+crime_region = ggplot(Crime) + geom_bar(aes(x = crmrte_cat, fill = crmrte_cat)) + facet_grid(region~.)+
+  theme_fivethirtyeight()+ scale_fill_fivethirtyeight("cyl")  + labs(title = "Crime Rate by Region", x = "Crime Rate")
+#candidate to test anova region west
+
+crime_smsa = ggplot(Crime) + geom_bar(aes(x = crmrte_cat, fill = crmrte_cat)) + facet_grid(smsa~.)+
+  theme_fivethirtyeight()+ scale_fill_fivethirtyeight("cyl")  + labs(title = "Crime Rate by SMSA", x = "Crime Rate")
+
+grid.arrange(crime_region, crime_smsa, ncol=2)
+
+#smsa yes with high rate.
+```
+
+In these two charts above we see the crime rate decrease when the variable `region` takes the value `west` and when the `smsa` variable takes the value `yes`. Consequently, we continue to further explore  the relationship between these two categorical variables and the target variable by implementing _ANOVA_ in the next section, but first we analyze the variances and covariances between all predictors. We trace a paired graph with some selected variables in order to explore the correlation between the variables.
+
+```{r, echo=FALSE, cache=TRUE, fig.width=15,fig.height=15}
+covar <- Crime[,c('prbarr','prbpris', 'density', 'pctmin', 'wfir', 'wmfg', 'wfed', 'region', 'smsa','crmrte')]
+ggpairs(covar) + theme_fivethirtyeight()
+```
+
+In the graphs above we show the correlation between the selected predictors and between the predictors and the target. The highest value of correlation is between the target variable and `density`. Other high values of correlation involve variables `wmfg`, `wfed` and `density`. We will later discuss whether these variables are significant for modeling.
+
+\section{ANOVA models}
+
+In the first analysis, we model the mean of the target variable using a two-level factor. We aggregate all values of `region` (`west`, `central` and `other`) into `w` and `nw`, whether they take value equal to `west` or not. Running _ANOVA_, we obtain the following output:
+
+```{r, echo=FALSE}
+Crime$crmrte_cat <- as.factor(Crime$crmrte_cat)
+Crime$region_w_nw <- rep('nw', length(Crime$crmrte_cat))
+Crime$region_w_nw[Crime$region=='west'] <- 'w'
+Crime$region_w_nw <- as.factor(Crime$region_w_nw)
+
+fit.anova <- aov(crmrte ~ region_w_nw, data=Crime)
+summary(fit.anova)
+```
+
+The results show a very low $p-$value for the variable, which means that the model is accurate. The null hypothesis (i.e., means are equal for both regions) is rejected. Then, we compare the means of the crime rate between the `west` and other regions. 
+
+```{r, echo=FALSE}
+#compare the means
+tapply(Crime$crmrte,Crime$region_w_nw, mean)
+```
+
+Considering the above analysis, we can assume that the model can correctly fit the value of the mean in each region: (`west`, `other`). The coefficients of the model can be extracted from the fit value retuned in the package.
+```{r, echo=FALSE}
+#compare the means
+fit.anova$coefficients
+```
+The model is given by $$\mu_{crmrte} = 0.0347 - 0.0148 I_{\{region='w' \}}$$
+
+Now, we repeat the same analysis considering two factors. We alse include the other categorical variable: `smsa`. We fit an _ANOVA_ model and we get the following output:
+
+```{r, echo=FALSE}
+fit.anova2 <- aov(crmrte ~ region_w_nw + smsa, data=Crime)
+summary(fit.anova2)
+```
+
+Again, we obtain a good $p-$value for each of the two variables, which means that both factors have a strong relationship with the response variable. The null hypotesis (i.e., the means are equal) is rejected. The coefficients in this case are:
+
+```{r, echo=FALSE}
+#compare the means
+fit.anova2$coefficients
+```
+
+Besides the two categorical variables, we include in the analysis of the variance the interaction effect between the two variables. 
+
+```{r, echo=FALSE}
+#anova using two categorical values and their interaction
+fit.anova3 <- aov(crmrte ~ region_w_nw + smsa + region_w_nw:smsa, data=Crime)
+summary(fit.anova3)
+```
+
+The $p-$values indicate that the two factors and the interaction between them are significant.
+
+\section{Confidence Interval for the Median}
+As discussed above, we defined a categorical target variable: `high`, if the value of the crime rate was higher that the median, and `low/normal` otherwise. This was done in order to be able to run models that require such variables, as we will see in the following sections. Therefore, it would be very useful to have confidence intervals about the median. Computing the median value, we get:
+
+```{r, echo=FALSE}
+median <- median(Crime$crmrte)
+median
+```
+
+We can simply obtain a confidence interval around that value. Considering the binomial distribution with $n = 626$ observations and a probability of $0.5$, we want to obtain the $k-th$ observation that returns the $98\%$, the $95\%$, the $88\%$ and the $81\%$ of the probability by doing the following:
+
+$$1- 2 \times p_{binom}(k, n = 626, p = 0.5)$$
+
+the $k-th$ values corresponding to those intervals are
+
+```{r, echo=FALSE}
+k<- 260+c(23,30,35,38) # probabilities 99%; 95%; 88%; 81%;
+k
+```
+
+From the vector of sorted values for `crmrte`, we select the $k-th$ elements of the vector and the $n-k+1$ elements corresponding to the four confidence intervals: 
+
+```{r, echo=FALSE}
+n <- 626
+#1 - 2 * pbinom(k, n, 1 / 2)
+perc <- c(0.99,0.95,0.88,0.81)
+col_nam <- c('signif.%', 'low.level', 'up.level')
+conf_i <- matrix(0,nrow=4,ncol=3)
+for (i in 1:4){
+  conf_i[i,] <- c(perc[i],sort(Crime$crmrte)[k[i]],sort(Crime$crmrte)[n-k[i]+1])
+}
+colnames(conf_i) <- col_nam
+kable(conf_i)
+```
+
+A more sofisticated method to obtain the confidence interval for the median is the _Wilcoxon Signed Rank Test_. As this test assumes symmetry of the variable's distribution, we applied it to the logarithm of the target variable, as discussed above. The results were then transformed to return the values to the original scale by applying the exponential function to the intervals obtained.
+
+```{r, echo=FALSE}
+#run the wilcox test
+crmrte_l <- log(Crime$crmrte)
+perc <- c(0.99,0.95,0.88,0.81)
+col_nam <- c('signif.%', 'low.level', 'up.level')
+conf_iw <- matrix(0,nrow=4,ncol=3)
+for (i in 1:4){
+  wct <- wilcox.test(crmrte_l, conf.int = TRUE,alternative = "two.sided",conf.level=perc[i])
+  conf_iw[i,1] <-perc[i]
+  conf_iw[i,2:3] <- exp(wct$conf.int)
+}
+colnames(conf_iw) <- col_nam
+kable(conf_iw)
+```
+
+The results are similar to the simpler sign test.
+
+\section{Dependency analysis with predictive models}
+
+Continuing with the analysis we fitted a decision tree model. To do so, we considered the target variable in the categorical format. The purpose of this model is to further explore the data and understand which variables are relevant to the response.
+
+```{r, echo=FALSE}
+n=626
+test = sample(c(T,F),size=n,prob=c(0.4,0.6),replace=TRUE)
+fit <-rpart(crmrte_cat ~prbarr+prbpris+density+pctmin+wfir+wmfg+wfed+region+smsa,data=Crime[-test,]
+             ,control= rpart.control(minbucket = 60, maxdepth =5, xval=10, cp=0.05)
+           )
+y <- 1-fit$frame$yval2[,5]
+cols <- rgb(1,y,y)
+prp(fit, type=0, extra=1, under=TRUE, uniform=TRUE,
+    
+    branch.col=cols, box.col=cols, branch.type=5, yesno=FALSE, faclen=0 
+    
+    #main=paste("Candidate Strategy #",uu2[1,2])
+)
+pred.fit <- predict(fit,newdata=Crime[test,])
+#cbind(pred.fit,Crime[test,'crmrte_cat'] )
+pred.class <- rep('low/normal', length(Crime[test,'crmrte_cat']))
+pred.class[pred.fit[,'high']>0.5] <- 'high'
+confusionMatrix(pred.class,Crime[test,'crmrte_cat'])
+```
+
+We get a testing accuracy of 83% and verify that the most relevant variables to the target are `region` and `density`.
+
+# Linear analysis
+
+Additionally, we considered a standard _linear regression_ model involving all predictors, as an alternative means to view the significance of each predictor. Note that in this context, performing _k-fold cross-validation_ or _bootstrapping_ isn't necessary as we are only interested in significant predictors, hence we performed an ordinary $80/20$ splitting of the data into a training and a testing sets as shown in the code below: 
+
+```{R}
+set.seed(1000)
+test = sample(nrow(Crime), nrow(Crime)*.2)
+excluded = c("crmrte", "crmrte_cat", "region_w_nw")
+xs = Crime[-which(names(Crime) %in% excluded)]
+ys = Crime[which(names(Crime) %in% c("crmrte"))]
+xs_test  = xs[test,]
+xs_train = xs[-test,]
+ys_test  = ys[test,]
+ys_train = ys[-test,]
+p = dim(xs)[2]
+```
+
+We then run a simple linear fit will all predictors, in order to analyse the significance levels of the parameters, provided that the linear test itself has a significant $R^2$ value. 
+
+```{R}
+lm.fit = lm(crmrte ~ ., data = Crime)
+summary(lm.fit)
+```
+
+as the $R^2$ value is sufficiently high (`r summary(lm.fit)$r.squared`), we decided to perform `best subset selection` on the set of predictors. Although we are aware of the performance penalties of doing this for $p = 23$, the running times were considerably short and hence we decided to stick to this approach: 
+
+```{R, cache = TRUE}
+bestsubset=regsubsets(y ~ ., data = data.frame(y = ys_train, x = xs_train), nvmax = p)
+```
+
+After getting all best subsets with size $k = 1...p$, we analysed both _training_ and _testing_ errors by performing _k-fold cross validation_ with $k = 10$ and then getting the minimum errors on all iterations: 
+
+
+```{R}
+set.seed(1000)
+x_cols = colnames(xs, do.NULL = FALSE, prefix = "x.")
+colnames(xs) <- paste("x", x_cols, sep = ".")
+x_cols = colnames(xs)
+folds <- createFolds(Crime$crmrte[-test], k=10, list=TRUE, returnTrain=FALSE)
+val.test.errors = matrix(, nrow = length(folds), ncol = p)
+val.train.errors = matrix(, nrow = length(folds), ncol = p)
+pred_train = vector()
+pred_test = vector()
+
+for (j in 1:length(folds)) {
+  test_folds     = folds[[j]]
+  ys_train_folds = ys[-test_folds,]
+  ys_test_folds  = ys[test_folds,]
+  xs_train_folds = xs[-test_folds,]
+  xs_test_folds  = xs[test_folds,]
+  for (i in 1:p) {
+    coefi = coef(bestsubset, id = i)
+    pred_test = as.matrix(xs_test_folds[, x_cols %in% names(coefi)]) %*% coefi[names(coefi) 
+                                                                    %in% x_cols]
+    pred_train = as.matrix(xs_train_folds[, x_cols %in% names(coefi)]) %*% coefi[names(coefi) 
+                                                                     %in% x_cols]
+    val.train.errors[j,i] = mean((ys_train_folds - pred_train)^2)
+    val.test.errors[j,i] = mean((ys_test_folds - pred_test)^2)
+  }
+}
+min_test_errors = apply(val.test.errors,2,mean)
+min_train_errors = apply(val.train.errors,2,mean)
+
+min_test = which.min(min_test_errors) 
+min_train = which.min(min_train_errors) 
+min_test_error.1 = val.test.errors[min_test]
+min_train_error.1 = val.train.errors[min_train]
+```
+
+
+The cross-validation estimate of the training error is 
+
+```{R}
+min_train_error.1
+```
+
+The cross-validation error is 
+
+```{R}
+min_test_error.1
+```
+
+The actual training and test errors for this subset, on the original datasets, are
+
+```{R}
+x_cols = colnames(xs, do.NULL = FALSE, prefix = "x.")
+colnames(xs) <- paste("x", x_cols, sep = ".")
+x_cols = colnames(xs)
+coefi = coef(bestsubset, id = min_test)
+pred_test.subset = as.matrix(xs_test[, x_cols %in% names(coefi)]) %*% coefi[names(coefi) 
+                                                                    %in% x_cols]
+pred_train.subset = as.matrix(xs_train[, x_cols %in% names(coefi)]) %*% coefi[names(coefi) 
+                                                                    %in% x_cols]
+train.errors.bestsubset = mean((ys_train - pred_train.subset)^2)
+train.errors.bestsubset 
+test.errors.bestsubset = mean((ys_test - pred_test.subset)^2)
+test.errors.bestsubset 
+```
+
+
+both obtained when using the best subset with $k = 8$ predictors. The ratio between _testing _ and _training _ errors is (`r test.errors.bestsubset / train.errors.bestsubset`). Consequently, we can conclude that the predictors yielded by the subset generated using _best subset selection_ belong to a consistent model and, hence, can be used as a basis for non linear models. Nevertheless, we decided to run a linear fit with these predictors in order to check our conclusions: 
+
+```{R}
+lm.2.fit = lm(crmrte ~  prbarr + prbconv + polpc + density 
+              + as.factor(region) + pctmin + wfed + pctymle, data = Crime)
+summary(lm.2.fit)
+```
+
+We can note that all coefficients are significant and the $R^2$, as expected, was reduced but only marginally (`r summary(lm.2.fit)$r.squared` versus `r summary(lm.fit)$r.squared`), which confirms that the model with this subset is indeed a good model. 
+
+Next, we proceeded to graphically analyse any nonlinearities between these predictors and the response, by looking at all pairwise plots: 
+
+```{R}
+fitnames = c("prbarr" , "prbconv" , "polpc" , "density" ,
+             "as.factor(region)" , "pctmin" , "wfed" ,
+             "pctymle", "crmrte")
+pairs(Crime[names(Crime) %in% fitnames])
+```
+
+It can be seen that the relationship between `crmrte` and `prbrarr`, `prbconv` and `polpc`, respectively, could be better explained by applying a _log_ to these predictors. Additionally, `wfed` has a nonlinear relationship with the response, which makes it suitable as a polynomial regression predictor. Consequently, we run a new, nonlinear model with these modified predictors: 
+
+```{R}
+lm.3.fit = lm(crmrte ~  log(prbarr) + log(prbconv) +
+                log(polpc) + density + as.factor(region) + 
+                pctmin + poly(wfed,3) + pctymle, data = Crime)
+summary(lm.3.fit)
+```
+
+```{R}
+xs_predict = predict(lm.3.fit,xs_test)
+mean((ys_test - xs_predict)^2)
+```
+
+The lack of significance of the polynomials for `wfed` and the increase in $R^2$ suggests that this model could possibly overfit. Hence, we removed the polynomials related to `wfed`, but kept the $log$ predictors as they have shown to be very significant.
+
+Next, we analysed all significant interactions between all original predictors and plugged them to our previous model. The number of interactions that we added to the model are: 
+```{R}
+lm.4.fit = lm(crmrte ~  .*., data = Crime)
+```
+
+
+```{R}
+lm.5.fit = lm(crmrte ~  log(prbarr) + log(prbconv) +
+                log(polpc) + density + as.factor(region) + 
+                pctmin + poly(wfed,3) + pctymle + .*., data = Crime)
+```
+
+```{R}
+dim(summary(lm.4.fit)$coefficients)
+```
+
+The $R^2$ values for each fit are, respectively:
+
+```{R}
+summary(lm.4.fit)$r.squared
+```
+
+```{R}
+summary(lm.5.fit)$r.squared
+```
+
+We can see that both models are seriously overfitting, while the number of predictors has skyrocketed due to all interaction combinations. Even though it is tempting to keep only those interactions with a relevant significance value, since the removal of each of these predictors affects the overall model, we chose instead to refine it by using a _Stepwise Algorithm_ applying _AIC_ to decide. The resulting fit, which has the following number of coefficients: 
+
+```{R, longanalysis, results='hide', cache = TRUE}
+interaction.fit = stepAIC(lm.5.fit)
+```
+
+
+
+```{R}
+length(interaction.fit$coefficients)[1]
+```
+
+which means a reduction on the number of interactions by $30\%$, we proceeded to calculate both _training MSE_ and _testing MSE_: 
+
+
+```{R}
+coefi = coef(interaction.fit)
+pred = as.matrix(xs_train[, x_cols %in% names(coefi)]) %*% coefi[names(coefi) 
+                                                                %in% x_cols]
+val.train.errors = mean((ys_train - pred)^2)
+val.train.errors
+
+pred = as.matrix(xs_test[, x_cols %in% names(coefi)]) %*% coefi[names(coefi) 
+                                                                %in% x_cols]
+val.test.errors = mean((ys_test - pred)^2)
+val.test.errors
+```
+
+Here, we can see that the error rate remains close to one (`r val.test.errors / val.train.errors`) which still proves that this model holds. Now that we obtained a complex model consisting of linear variables, _log_ variables and _interaction_ variables, we will perform _Lasso_ in order to remove all interaction terms that are not significant, so that we arrive to a model easy to understand.
+
+# Lasso Analysis
+
+With the resulting model from all our previous steps, we performed _k-fold cross validation_ using Lasso, in order to obtain the optimum value of $\lambda$ for our model. The plot showing the _cross-validation error_ as $\lambda$ increases is the following: 
+
+```{R}
+formula = "~ log(prbconv) + log(polpc) + density + pctmin +  poly(wfed, 3) +
+pctymle + county + year + prbarr + prbconv +   prbpris + avgsen + polpc +
+taxpc + region + smsa + wcon +   wtuc + wtrd + wfir + wser + wmfg + wfed + 
+wsta + wloc + mix +   county:year + county:avgsen + county:polpc + 
+density:county +  pctmin:county + county:wcon + county:wtuc + county:wtrd +
+county:wfir + county:wmfg + county:wsta + county:wloc + pctymle:county +   
+year:prbconv + year:prbpris + year:polpc + year:region +   year:smsa + pctmin:year + 
+year:wtrd + year:wfir + year:wmfg +   year:wsta + year:mix + pctymle:year +
+prbarr:prbpris + prbarr:polpc +   density:prbarr + prbarr:region + pctmin:prbarr + 
+prbarr:wcon +   prbarr:wtuc + prbarr:wtrd + prbarr:wfir + prbarr:wfed +
+prbconv:prbpris +   prbconv:polpc + prbconv:smsa + pctmin:prbconv + prbconv:wcon +   
+prbconv:wfir + prbconv:wser + prbconv:wmfg + prbconv:mix +   density:prbpris +
+prbpris:taxpc + prbpris:region + pctmin:prbpris +   prbpris:wcon + prbpris:wtrd + 
+prbpris:wmfg + prbpris:wfed + prbpris:wsta + prbpris:wloc + density:avgsen + 
+avgsen:taxpc + avgsen:region + avgsen:smsa + pctmin:avgsen + avgsen:wcon +   
+avgsen:wtrd + avgsen:wfir + avgsen:wser + avgsen:wfed + avgsen:mix + pctymle:avgsen + 
+polpc:region + polpc:smsa + pctmin:polpc +   polpc:wtuc + polpc:wtrd + polpc:wser + 
+polpc:wmfg + polpc:wfed +density:region + density:smsa + density:pctmin + 
+density:wcon +  density:wtuc + density:wtrd + density:wsta + density:mix +   
+density:pctymle + taxpc:region + taxpc:smsa + pctmin:taxpc + 
+taxpc:wmfg + taxpc:wfed + taxpc:wsta + taxpc:wloc + region:smsa +   
+pctmin:region + region:wcon + region:wtuc + region:wtrd +   region:wfir + 
+region:wser + region:wmfg + region:wfed + region:wsta +   region:wloc + 
+region:mix + pctymle:region + pctmin:smsa +   smsa:wtuc + smsa:wtrd + 
+smsa:wser + smsa:wmfg + smsa:wfed +   smsa:wsta + smsa:mix + pctymle:smsa + 
+pctmin:wtrd + pctmin:wfir +   pctmin:wser + pctmin:wmfg + pctmin:wfed + 
+pctmin:wsta + pctmin:wloc +   pctmin:mix + pctmin:pctymle + wcon:wtuc +
+wcon:wfir + wcon:wmfg + wcon:wfed + wcon:wsta + wcon:mix + pctymle:wcon + 
+wtuc:wsta +   wtuc:wloc + wtrd:wfir +wtrd:wmfg + wtrd:wsta + wtrd:mix + 
+wfir:wmfg + wfir:wfed + wfir:wsta + wfir:wloc + wfir:mix + pctymle:wfir + 
+wser:wmfg + wser:wfed + wser:wloc + wser:mix + wmfg:wfed + pctymle:wmfg + 
+wfed:wsta + wfed:wloc + wfed:mix +   wsta:wloc + wsta:mix + pctymle:wsta 
++ pctymle:mix"
+xs_lasso = model.matrix(as.formula(formula), Crime)
+xs_lasso_train = xs_lasso[-test,]
+xs_lasso_test = xs_lasso[test,]
+grid=10^seq(2,-4,length=100)
+lasso.mod=cv.glmnet(xs_lasso[-test ,],ys_train,alpha=1,lambda=grid)
+```
+
+
+
+```{R}
+ggplot.glmnet = function(cv.glmnet.obj){
+  tidied_cv <- tidy(cv.glmnet.obj)
+  glance_cv <- glance(cv.glmnet.obj)
+
+  # plot of MSE as a function of lambda
+  g <- ggplot(tidied_cv, aes(lambda, estimate))  + scale_x_log10() + 
+    geom_ribbon(aes(ymin = conf.low, ymax = conf.high), alpha = .15)+ 
+    geom_line(colour = "red") +
+    # geom_line(aes(y=conf.low), linetype = "dashed",size=.4)+
+    # geom_line(aes(y=conf.high), linetype = "dashed",size=.4)+
+    geom_vline(xintercept = glance_cv$lambda.min, lty = 2) +
+    geom_vline(xintercept = glance_cv$lambda.1se, lty = 2) + theme_fivethirtyeight()
+  return(g)
+} 
+#ggplot.glmnet(lasso.mod)
+plot(lasso.mod)
+
+```
+
+We then chose a value of $\lambda$ within $1$ standard deviation from the optimum value, as this is a commonly established good practice. 
+
+```{R}
+lasso.mod.3=glmnet(xs_lasso[-test ,],ys_train,alpha=1,lambda=lasso.mod$lambda.1se)
+lasso_vars =  names(coef(lasso.mod.3)[,1][coef(lasso.mod.3)[,1]!=0])[-1]
+```
+
+Lasso yielded `r length(lasso_vars)` predictors with nonzero values, a reduction of `r round(((length(interaction.fit$coefficients) - length(lasso_vars)) / length(interaction.fit$coefficients))*100)`$\%$ with respect to the _stepwise AIC_. The _test error_ for this model is obtained using the same _k-folds_ generated for the first model:  
+
+```{R}
+ys_lasso_pred = predict(lasso.mod.3, xs_lasso_test, s = lasso.mod$lambda.1se)
+lasso_rss = mean((ys_test - ys_lasso_pred)^2)
+lasso_rss
+```
+
+and this error is `r (lasso_rss / test.errors.bestsubset) * 100`% of the training error of our original model using _best subset selection_. 
+
+Finally, we analyse the $L1$-norm between our estimated responses and the true model: 
+
+```{R}
+mean(abs((ys_test - ys_lasso_pred)/ ys_test))
+```
+
+which yields a more than reasonable value, since it's below $30\%$. Consequently, the final set obtained in this section, after performing _linear_, _best subset selection_, _log_, _polynomial_ , _stepwise AIC_ and _Lasso_ yielded a model that will be used in the following sections for more complex fits that will derive in our final model.
+
+# Non-linear modeling
+From the pairwise plot we generated shown previously, we identified a predictor `pctmin`, corresponding to the proportion of minorities in the region, showing a clear non-linear relationship with the crime rate that can benefit from higher order polynomial regression/splines and help with predicting the overall crime rate.
+
+## Linear model
+First we evaluated the regression model generated using only using a linear model:
+```{r, echo=FALSE}
+##########
+# Setup
+##########
+# Split into training/test sets
+set.seed(1)
+index.test = sample(nrow(Crime), nrow(Crime)*.20)
+Crime.train = Crime[-index.test,]
+Crime.test = Crime[index.test,]
+
+# k-Folds (k=10)
+folds = createFolds(Crime.train$pctmin, k=10, list=TRUE, returnTrain=FALSE)
+```
+
+```{r}
+# Only linear $pctmin
+# Only linear $pctmin
+fit.lin = list()
+pred.lin = list()
+kf.error.lin = vector()
+for (i in 1:length(folds)) {
+  fit.lin[[i]] = lm(crmrte ~ pctmin, data=Crime.train[-folds[[i]],])
+  pred.lin = predict(fit.lin[[i]], newdata=Crime.train[folds[[i]],])
+  test.lin.k = Crime.train[folds[[i]],]$crmrte
+  kf.error.lin[i] = mean(abs((pred.lin - test.lin.k)/test.lin.k))
+}
+best.index.lin = which.min(kf.error.lin)
+pred.lin = predict(fit.lin[[best.index.lin]], newdata=Crime.test)
+error.lin = mean(abs((pred.lin-Crime.test$crmrte)/Crime.test$crmrte))
+```
+
+```{r out.width='350px', fig.align='center'}
+# Plot
+base.plot = ggplot() + geom_point(aes(x = Crime$pctmin, y = Crime$crmrte), color="darkgrey") + 
+  labs(x="Proportion of minority in 1980 (%)", y="Crimes committed per person") +
+  theme_fivethirtyeight()
+base.plot +
+  geom_line(aes(x = Crime.test$pctmin, y = pred.lin), color="red") +
+  ggtitle("Linear model for crime rate vs. proportion of minorities")
+```
+\begin{center} Figure 1: Linear model for crime rate vs. proportion of minorities \end{center}
+
+This naive model results in an error rate of `r round(error.lin,4)` for the testing set. From the plot, it is clear that the relationship between the crime rate and the proportion of minorities in the area is not linear. 
+
+## Polynomial model
+Next, we obtained a degree-4 polynomial function for a smooth fit over the `pctmin` data:
+
+```{r}
+# Only polynomial $pctmin
+fit.poly = list()
+pred.poly = list()
+kf.error.poly = vector()
+for (i in 1:length(folds)) {
+  fit.poly[[i]] = lm(crmrte ~ poly(pctmin,4), data=Crime.train[-folds[[i]],])
+  pred.poly = predict(fit.poly[[i]], newdata=Crime.train[folds[[i]],])
+  test.poly.k = Crime.train[folds[[i]],]$crmrte
+  kf.error.poly[i] = mean(abs((pred.poly - test.poly.k)/test.poly.k))
+}
+best.index.poly = which.min(kf.error.poly)
+pred.poly = predict(fit.poly[[best.index.poly]], newdata=Crime.test)
+error.poly = mean(abs((pred.poly-Crime.test$crmrte)/Crime.test$crmrte))
+```
+
+```{r out.width='350px', fig.align='center'}
+# Plot
+base.plot +
+  geom_line(aes(x = Crime.test$pctmin, y = pred.poly), color="red") +
+  ggtitle("Degree-4 polynomial model for crime rate vs. proportion of minorities")
+```
+\begin{center} Figure 2: Degree-4 polynomial model for crime rate vs. proportion of minorities \end{center}
+
+The error rate was improved by reducing the bias of the model. This fit resulted in an error rate of `r round(error.poly,4)`.
+
+## Splines
+```{r}
+# Natural spline knots
+pctmin.knots = attr(ns(Crime.train$pctmin, df=6), "knots")
+
+# Only splines $pctmin
+fit.spl = list()
+pred.spl = list()
+kf.error.spl = vector()
+for (i in 1:length(folds)) {
+  fit.spl[[i]] = lm(crmrte ~ ns(pctmin, knots=pctmin.knots), data=Crime.train[-folds[[i]],])
+  pred.spl = predict(fit.spl[[i]], newdata=Crime.train[folds[[i]],])
+  test.spl.k = Crime.train[folds[[i]],]$crmrte
+  kf.error.spl[i] = mean(abs((pred.spl - test.spl.k)/test.spl.k))
+}
+best.index.spl = which.min(kf.error.spl)
+pred.spl = predict(fit.spl[[best.index.spl]], newdata=Crime.test, se.fit=TRUE)
+error.spl = mean(abs((pred.spl$fit-Crime.test$crmrte)/Crime.test$crmrte))
+```
+We further attempt to reduce the bias, introducing a more flexible piecewise polynomial by using knots. With a cubic spline, the fitted curves and their first and second derivatives are constrained to be continuous at the knots. As splines often lead to high variance at the outer ranges of the predictors, we fit a natural cubic spline, which forces the function to be linear at the boundary. `ns()` function was used to generate natural cubic knots with 6 degrees of freedom, with matrix of basis functions for splines and knots at `r round(pctmin.knots[1],2)`%, `r round(pctmin.knots[2],2)`%, `r round(pctmin.knots[3],2)`%, `r round(pctmin.knots[4],2)`%, and `r round(pctmin.knots[5],2)`% of `pctmin`.
+
+```{r out.width='350px', fig.align='center'}
+# Plot
+base.plot +
+  geom_ribbon(aes(x = Crime.test$pctmin, y = pred.spl$fit, ymin=pred.spl$fit-2*pred.spl$se, ymax=pred.spl$fit+2*pred.spl$se), color="lightgrey", alpha=.15) +
+  geom_line(aes(x = Crime.test$pctmin, y = pred.spl$fit), color="red") +
+  geom_line(aes(x = Crime.test$pctmin, y = pred.spl$fit+2*pred.spl$se), linetype = "dashed") +
+  geom_line(aes(x = Crime.test$pctmin, y = pred.spl$fit-2*pred.spl$se), linetype = "dashed") +
+  ggtitle("Natural cubic splines model for crime rate vs. proportion of minorities")
+```
+\begin{center}
+Figure 3: Natural cubic splines model for crime rate vs. proportion of minorities
+\end{center}
+
+Consequently, we see a modest improvement in the mean error: `r round(error.spl,4)`.
+
+We also attempted to fit a smoothing spline with a value of $\lambda$ chosen using cross-validation. This resulted in a model very similar to the polynomial fit and failed to improve the mean testing error.
+
+```{r}
+# Linear $pctmin with selected predictors
+fit.lin2 = list()
+pred.lin2 = list()
+kf.error.lin2 = vector()
+for (i in 1:length(folds)) {
+  fit.lin2[[i]] = lm(crmrte~pctmin + log(prbconv) + log(polpc) + prbarr + density:county + 
+                       prbarr:prbpris + pctmin:polpc + polpc:wfed + density:pctmin +
+                       density:pctymle + taxpc:wfed + region:wsta, data=Crime.train[-folds[[i]],])
+  pred.lin2 = predict(fit.lin2[[i]], newdata=Crime.train[folds[[i]],])
+  test.lin2.k = Crime.train[folds[[i]],]$crmrte
+  kf.error.lin2[i] = mean(abs((pred.lin2 - test.lin2.k)/test.lin2.k))
+}
+best.index.lin2 = which.min(kf.error.lin2)
+pred.lin2 = predict(fit.lin2[[best.index.lin2]], newdata=Crime.test)
+error.lin2 = mean(abs((pred.lin2-Crime.test$crmrte)/Crime.test$crmrte))
+```
+
+## Combined models
+Combining the predictors from the previous section with just the linear `pctmin` results in a mean error of `r round(error.lin2,4)`.
+
+```{r}
+# Splines with selected predictors
+fit.spl2 = list()
+pred.spl2 = list()
+kf.error.spl2 = vector()
+for (i in 1:length(folds)) {
+  fit.spl2[[i]] = lm(crmrte ~ ns(pctmin, knots=pctmin.knots) + log(prbconv) + log(polpc) + prbarr + density:county + 
+                       prbarr:prbpris + pctmin:polpc + polpc:wfed + density:pctmin +
+                       density:pctymle + taxpc:wfed + region:wsta, data=Crime.train[-folds[[i]],])
+  pred.spl2 = predict(fit.spl2[[i]], newdata=Crime.train[folds[[i]],])
+  test.spl2.k = Crime.train[folds[[i]],]$crmrte
+  kf.error.spl2[i] = mean(abs((pred.spl2 - test.spl2.k)/test.spl2.k))
+}
+best.index.spl2 = which.min(kf.error.spl2)
+pred.spl2 = predict(fit.spl2[[best.index.spl2]], newdata=Crime.test, se.fit=TRUE)
+error.spl2 = mean(abs((pred.spl2$fit-Crime.test$crmrte)/Crime.test$crmrte))
+```
+
+Finally, we included the splined version of `pctmin` predictor alongside the selected predictors, which resulted in a slight improvement in mean error to `r round(error.spl2, 4)`.
