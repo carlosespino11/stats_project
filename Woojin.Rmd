@@ -1,0 +1,224 @@
+---
+title: "Report"
+author: "Carlos Espino, Xavier Gonzalez, Diego Llarrull, Woojin Kim"
+date: "December 14, 2015"
+graphics: yes
+output:
+  pdf_document:
+    toc: true
+---
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/',
+                      echo=FALSE, warning=FALSE, message=FALSE)
+```
+\clearpage
+
+# Introduction
+Understanding the factors behind criminal behaviour is one of the most crucial task for preventing and controlling future crime. In this report, we explore the potential factors affecting crime rates based on the demographics and econometrics data gathered from 197 counties in North Carolina from 1981 to 1987. Using various statistical methods and modeling techniques, we analyze and identify the most important factors and metrics tied to crime rates. We also present a predictive model capable of estimating the crime rate with under 25% error using the selected parameters.
+
+# Dataset
+| Predictor| Description                                                                    |   |
+|----------|--------------------------------------------------------------------------------|---|
+| county   | county identifier                                                              |   |
+| year     | year from 1981 to 1987                                                         |   |
+| crmrte   | crimes committed per person                                                    |   |
+| prbarr   | 'probability' of arrest                                                        |   |
+| prbconv  | 'probability' of conviction                                                    |   |
+| prbpris  | 'probability' of prison sentence                                               |   |
+| avgsen   | average sentence, days                                                         |   |
+| polpc    | police per capita                                                              |   |
+| density  | people per square mile                                                         |   |
+| taxpc    | tax revenue per capita                                                         |   |
+| region   | one of 'other', 'west' or 'central'                                            |   |
+| smsa     | 'yes' or 'no' if in SMSA                                                       |   |
+| pctmin   | percentage minority in 1980                                                    |   |
+| wcon     | weekly wage in construction                                                    |   |
+| wtuc     | weekly wage in trns, util, commun                                              |   |
+| wtrd     | weekly wage in whole sales and retail trade                                    |   |
+| wfir     | weekly wage in finance, insurance and real estate                              |   |
+| wser     | weekly wage in service industry                                                |   |
+| wmfg     | weekly wage in manufacturing                                                   |   |
+| wfed     | weekly wage of federal emplyees                                                |   |
+| wsta     | weekly wage of state employees                                                 |   |
+| wloc     | weekly wage of local governments employees mix offence mix: face-to-face/other |   |
+| pctymle  | percentage of young males                                                      |   |
+\begin{center}Table 1: Description of the predictors in the dataset\end{center}
+
+```{r, echo=FALSE}
+library(ISLR)
+library(leaps)
+library(glmnet)
+library(caret)
+library(MASS)
+library(grid)
+library(ggplot2)
+library(splines)
+library(caret)
+library(knitr)
+
+load("ggthemes_data.rda")
+source("theme_fivethirtyeight.R")
+Crime <- read.csv("Crime.csv")
+Crime = Crime[,-1] # Remove the index column
+
+# Identify and remove the outliers found from later analyses
+# fit.all <- lm(crmrte~bs(pctmin, knots=pctmin.knots) + log(prbconv) + log(polpc) + prbarr + density:county + prbarr:prbpris + pctmin:polpc + polpc:wfed + density:pctmin + density:pctymle + taxpc:wfed + region:wsta, data=Crime)
+bad = c(440,353,437,439)
+Crime = Crime[-bad,]
+```
+
+# Non-linear modeling
+From the pairwise plot we generated shown in (), we identified a predictor `pctmin`, corresponding to the proportion of minorities in the region, showing a clear non-linear relationship with the crime rate that can benefit from higher order polynomial regression/splines and also help with predicting the overall crime rate.
+
+## Linear model
+First we evaluated the regression model generated using only using a linear model:
+
+```{r, echo=FALSE}
+##########
+# Setup
+##########
+# Split into training/test sets
+set.seed(1)
+test = sample(nrow(Crime), nrow(Crime)*.125)
+
+# k-Folds (k=10)
+folds <- createFolds(Crime$pctmin, k=10, list=TRUE, returnTrain=FALSE)
+
+# Sort for plotting later
+newdata.all = sort(Crime[test,]$pctmin, index.return=TRUE)
+newdata.data = (Crime[test,])[newdata.all$ix,]
+newdata.crmrte = (Crime[test,]$crmrte)[newdata.all$ix]
+```
+
+```{r}
+# Only linear $pctmin
+newdata.lin = (Crime[test,])[newdata.all$ix,]
+fit.lin = lm(crmrte ~ pctmin, data=Crime[-test,])
+pred.lin = predict(fit.lin, newdata=newdata.data, se.fit=T)
+error.lin = mean(abs((pred.lin$fit - newdata.crmrte)/newdata.crmrte))
+
+# Calculate error using k-folds
+kfolds.results.lin = vector()
+for (i in 1:length(folds)) {
+  fit.lin.k = lm(crmrte ~ pctmin, data=Crime[-folds[[i]],])
+  pred.lin.k = predict(fit.lin.k, newdata=Crime[folds[[i]],], se.fit=T)
+  newdata.crmrte.k = Crime[folds[[i]],]$crmrte
+  kfolds.results.lin[i] = mean(abs((pred.lin.k$fit - newdata.crmrte.k)/newdata.crmrte.k))
+}
+error.lin.mean = mean(kfolds.results.lin)
+```
+
+```{r out.width='350px', fig.align='center'}
+base.plot = ggplot() + geom_point(aes(x = Crime$pctmin, y = Crime$crmrte), color="darkgrey") + 
+  labs(x="Proportion of minority in 1980 (%)", y="Crimes committed per person") +
+  theme_fivethirtyeight()
+
+base.plot +
+  geom_line(aes(x = newdata.data$pctmin, y = pred.lin$fit), color="red") +
+  ggtitle("Linear model for crime rate vs. proportion of minorities")
+```
+\begin{center} Figure 1: Linear model for crime rate vs. proportion of minorities \end{center}
+
+This naïve model results in an error rate of `r round(error.lin.mean,4)` for the testing set. From the plot it is very clear that the relationship between the crime rate and the proportion of minorities in the area is not linear. 
+
+## Polynomial model
+Next we obtained a degree-4 polynomial fit for a smooth fit over the `pctmin` data:
+
+```{r}
+# Only poly $pctmin
+fit.poly = lm(crmrte ~ poly(pctmin,4), data=Crime[-test,])
+pred.poly = predict(fit.poly, newdata=newdata.data, se.fit=T)
+error.poly = mean(abs((pred.poly$fit - newdata.crmrte)/newdata.crmrte))
+
+# Calculate error using k-folds
+kfolds.results.poly = vector()
+for (i in 1:length(folds)) {
+  fit.poly.k = lm(crmrte ~ poly(pctmin,4), data=Crime[-folds[[i]],])
+  pred.poly.k = predict(fit.poly.k, newdata=Crime[folds[[i]],], se.fit=T)
+  newdata.crmrte.k = Crime[folds[[i]],]$crmrte
+  kfolds.results.poly[i] = mean(abs((pred.poly.k$fit - newdata.crmrte.k)/newdata.crmrte.k))
+}
+error.poly.mean = mean(kfolds.results.poly)
+```
+
+```{r out.width='350px', fig.align='center'}
+base.plot +
+  geom_line(aes(x = newdata.data$pctmin, y = pred.poly$fit), color="red") +
+  ggtitle("Degree-4 polynomial model for crime rate vs. proportion of minorities")
+```
+\begin{center} Figure 2: Degree-4 polynomial model for crime rate vs. proportion of minorities \end{center}
+
+There is a big improvement in reducing the bias of the model. This fit results in an error rate of `r round(error.poly.mean,4)`.
+
+## Splines
+```{r}
+# Spline function
+pctmin.knots = attr(ns(Crime$pctmin, df=4), "knots")
+#pctmin.knots = attr(smooth.spline(Crime$pctmin, cv=TRUE), "knots")
+
+# Only splines $pctmin
+fit.splines = lm(crmrte~bs(pctmin, knots=pctmin.knots), data=Crime[-test,])
+pred.splines = predict(fit.splines, newdata=list(pctmin = newdata.all$x), se.fit=T)
+error.splines = mean(abs((pred.splines$fit - newdata.crmrte)/newdata.crmrte))
+
+# Calculate error using k-folds
+kfolds.results.splines = vector()
+for (i in 1:length(folds)) {
+  fit.splines.k = lm(crmrte~bs(pctmin, knots=pctmin.knots), data=Crime[-folds[[i]],])
+  pred.splines.k = predict(fit.splines.k, newdata=Crime[folds[[i]],], se.fit=T)
+  newdata.crmrte.k = Crime[folds[[i]],]$crmrte
+  kfolds.results.splines[i] = mean(abs((pred.splines.k$fit - newdata.crmrte.k)/newdata.crmrte.k))
+}
+error.splines.mean = mean(kfolds.results.splines)
+```
+We further attempt to reduce the bias, introducing a more flexible piecewise polynomial by using knots. Using a cubic spline, the fitted curves are constrained to be continuous. As splines often leads to high variance at the outern ranges of the predictors, we fit natural cubic spline, which forces the function to be linear at the boundary. `ns()` function was used to generate natural cubic knots with 4 degrees of freedom, with matrix of basis functions for splines and knots at `r pctmin.knots[1]`%, `r pctmin.knots[2]`%, and `r pctmin.knots[3]`% of `pctmin`.
+
+```{r out.width='350px', fig.align='center'}
+base.plot +
+  geom_ribbon(aes(x = newdata.all$x, y = pred.splines$fit, ymin= pred.splines$fit-2*pred.splines$se, ymax= pred.splines$fit+2*pred.splines$se), color="lightgrey", alpha =.15)+
+  geom_line(aes(x = newdata.all$x, y = pred.splines$fit), color="red") +
+  geom_line(aes(x = newdata.all$x, y = pred.splines$fit+2*pred.splines$se), linetype = "dashed") +
+  geom_line(aes(x = newdata.all$x, y = pred.splines$fit-2*pred.splines$se), linetype = "dashed") +
+  ggtitle("Smoothing splines model for crime rate vs. proportion of minorities")
+```
+\begin{center}
+Figure 3: Smoothing splines model for crime rate vs. proportion of minorities
+\end{center}
+
+Consequently, we see a modest improvement in the mean error: `r round(error.splines.mean,4)`.
+
+We also attempted to fit a smoothing spline with a value of $\lambda$ chosen cross-validation. This resulted in a model very similar to the polynomial fit and failed to improve the mean $k$-folds cross-validation error.
+
+```{r}
+# Linear $pctmin with selected predictors
+kfolds.results.lin.k = vector()
+for (i in 1:length(folds)) {
+  fit.lin.1.k = lm(crmrte~pctmin + log(prbconv) + log(polpc) + prbarr + density:county + 
+                     prbarr:prbpris + pctmin:polpc + polpc:wfed + density:pctmin +
+                     density:pctymle + taxpc:wfed + region:wsta, data=Crime[-folds[[i]],])
+  pred.lin.1.k = predict(fit.lin.1.k, newdata=Crime[folds[[i]],], se.fit=T)
+  nd.crmrte.k = Crime[folds[[i]],]$crmrte
+  kfolds.results.lin.k[i] = mean(abs((pred.lin.1.k$fit - nd.crmrte.k)/nd.crmrte.k))
+}
+error.lin.1.mean = mean(kfolds.results.lin.k)
+```
+
+## Combined models
+Combining the predictors from the previous section with just the linear `pctmin` results in a mean error of `r round(error.lin.1.mean,4)`.
+
+```{r}
+# Splines $pctmin with selected predictors
+kfolds.results.spl.k = vector()
+for (i in 1:length(folds)) {
+  fit.spl.2.k = lm(crmrte~bs(pctmin, knots=pctmin.knots) + log(prbconv) + log(polpc) + 
+                     prbarr + density:county + prbarr:prbpris + pctmin:polpc + 
+                     polpc:wfed + density:pctmin + density:pctymle + taxpc:wfed + 
+                     region:wsta, data=Crime[-folds[[i]],])
+  pred.spl.2.k = predict(fit.spl.2.k, newdata=Crime[folds[[i]],], se.fit=T)
+  nd.crmrte.k = Crime[folds[[i]],]$crmrte
+  kfolds.results.spl.k[i] = mean(abs((pred.spl.2.k$fit - nd.crmrte.k)/nd.crmrte.k))
+}
+error.spl.2.mean = mean(kfolds.results.spl.k)
+```
+
+Finally, we included the splined version of `pctmin` predictor alongside the selected predictors, which resulted in a modestly improved mean error of `r round(error.spl.2.mean, 4)`.
