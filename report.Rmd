@@ -716,4 +716,7 @@ We observe the following:
 * The _Residual vs Leverage Plot_ exhibits that one of the residuals is highly leveraged and has a large Cook's distance, this corresponds to an observation which is both influential and an outlier. The rest of the residuals have a more regular behaviour.
 
 # Summary
+In this project, we wanted to apply methods and knowledge learned in the class to a real-world data. Using crime rate data in North Carolina from 1981 to 1987, we aimed to build a robust model that could be used predict the crime rate and understand some of the underlying factors behind the crime rate. Toward this goal, we followed a methodology that consists in a series of steps, each of this corresponding to a statistical learning topic covered along the semester.
+
+First, we indentified our target variable and explored their median value. We examined the predictors and their relationship with the response. Then, we noticed which variables were significant and correlated. We detected influential observations and removed them accordingly. After cleaning the dataset, we run an ANOVA model and a decision tree algorithm to confirm their interdependece.
 
