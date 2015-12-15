@@ -158,25 +158,30 @@ ggpairs(covar) + theme_fivethirtyeight()
 
 In the graphs above we show the correlation between the selected predictors and between the predictors and the target. The highest value of correlation is between the target variable and `density`. Other high values of correlation involve variables `wmfg`, `wfed` and `density`. We will later discuss whether these variables are significant for modeling.
 
-# Analysis
-## Leveraged Points Detection
-Just in orter to identify leveraged points, we run a linear model with all the continous variables as predictors. Then, we calculated the cook distance and trace a levaraged point plot. 
+\section{Influencial observation detection}
 
-```{r, echo=FALSE}
+Just in order to identify influencial points, we run a linear model with all the continous variables as predictors. Then, we calculated the cook distance of each observation and traced a plot. We detected the observations that have a cook distance value greater than 0.5. This treshold value was calculated as the average of two methods. 
 
+```{r, echo=FALSE, out.width='250px', fig.align='center'}
 formul <-'crmrte~ year + prbarr + prbconv + prbpris+avgsen+polpc+density+taxpc+region+smsa+pctmin+wcon+wtuc+
   wtrd+ wfir+ wser +wmfg+wfed+wsta+wloc+mix+pctymle'   
 #bad = c(440,353,437,439)
 #Crime = Crime[-bad,]
 
 lm.fit <- lm(formul, data=Crime)
-
-cutoff <- 4/((nrow(Crime)-length(lm.fit$coefficients)-2)) 
-plot(lm.fit, which=4, cook.levels=cutoff)
-
+lmPl1 = diagPlot(lm.fit) 
+lmPl1$cdPlot
+lev.p <- sort(cooks.distance(lm.fit)[cooks.distance(lm.fit)> (4/(nrow(Crime)-ncol(Crime))+1)/2 ])
 ```
 
-We identified the points index 200, 440 and 586 as possible leveraged points. A 
+Clearly, there are 5 points that are highly influential. These points, showed in the table below, have a value greater than the treshold and they are consequently eliminated from the dataset. In a real context, this analysis would lead to a deeper reaserch about the reasons under this high leverages.
+
+```{r, echo=FALSE}
+kable(data.frame(Cooks.Dist=lev.p))
+
+Crime = Crime[-as.numeric(names(lev.p)),]
+```
+
 
 ## ANOVA models
 In the first analysis, we model the mean of the target variable using a two-level factor. We aggregate all values of `region` (`west`, `central` and `other`) into `w` and `nw`, whether they take value equal to `west` or not. Running _ANOVA_, we obtain the following output:
