@@ -720,6 +720,6 @@ We observe the following:
 
 * The _Normal Q-Q Plot_ shows that the quantiles of the standardized residuals versus the quantiles of a standard normal are similiar, and meet the line reference almost perfectly except for the extreme points. This indicates that our residuals follow the normality hypothesis.
 
-* The _Residual vs Leverage Plot_ exhibits that we do not have high-leveraged residuals and that the Cook's distances are not large in general, indicating that we do not count with influential observations or outliers.
+* The _Residual vs Leverage Plot_ exhibits that one of the residuals is highly leveraged and has a large Cook's distance, this corresponds to an observation which is both influential and an outlier. The rest of the residuals have a more regular behaviour.
 
 # Summary
