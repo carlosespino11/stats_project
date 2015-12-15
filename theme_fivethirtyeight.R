@@ -67,7 +67,8 @@ diagPlot<-function(model){
   p3<-p3+ylab(expression(sqrt("|Standardized residuals|")))
   p3<-p3+ggtitle("Scale-Location")+theme_fivethirtyeight()
   
-  p4<-ggplot(model, aes(seq_along(.cooksd), .cooksd))+geom_bar(stat="identity", position="identity")
+  p4<-ggplot(model, aes(seq_along(.cooksd), .cooksd))+geom_bar(stat="identity", position="identity",
+                                                               width=5)
   p4<-p4+xlab("Obs. Number")+ylab("Cook's distance")
   p4<-p4+ggtitle("Cook's distance")+theme_fivethirtyeight()
   
