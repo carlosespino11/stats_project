@@ -338,13 +338,11 @@ lm.fit = lm(crmrte ~ ., data = Crime)
 summary(lm.fit)
 ```
 
-as the $R^2$ value is sufficiently high (as the $R^2$ value is sufficiently high ($`r summary(lm.fit)$r.squared`$), we decided to perform $`best subset selection`$ on the set of predictors. Although we are aware of the performance penalties of doing this for $p = 23$, the running times were considerably short and hence we decided to stick to this approach: 
-
 ```{R, cache = TRUE}
 bestsubset=regsubsets(y ~ ., data = data.frame(y = ys_train, x = xs_train), nvmax = p)
 ```
 
-After getting all best subsets with size $k = 1...p$, we analysed both _training_ and _testing_ errors by performing _k-fold cross validation_ with $k = 10$ and then getting the minimum errors on all iterations: 
+as the $R^2$ value is sufficiently high ($`r summary(lm.fit)$r.squared`$), we decided to perform _best subset selection_ on the set of predictors. Although we are aware of the performance penalties of doing this for $p = 23$, the running times were considerably short and hence we decided to stick to this approach. Finally, after getting all best subsets with size $k = 1...p$, we analysed both _training_ and _testing_ errors by performing _k-fold cross validation_ with $k = 10$ and then getting the minimum errors on all iterations.
 
 
 ```{R}
