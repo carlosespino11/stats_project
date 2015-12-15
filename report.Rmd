@@ -323,6 +323,7 @@ test = sample(nrow(Crime), nrow(Crime)*.2)
 excluded = c("crmrte", "crmrte_cat", "region_w_nw")
 xs = Crime[-which(names(Crime) %in% excluded)]
 ys = Crime[which(names(Crime) %in% c("crmrte"))]
+cCrime = Crime[-which(names(Crime) %in% c("crmrte_cat"))]
 xs_test  = xs[test,]
 xs_train = xs[-test,]
 ys_test  = ys[test,]
@@ -427,14 +428,14 @@ xs_predict = predict(lm.3.fit,xs_test)
 ```
 
 ```{R}
-lm.4.fit = lm(crmrte ~  .*., data = Crime)
+lm.4.fit = lm(crmrte ~  .*., data = cCrime)
 ```
 
 
 ```{R}
 lm.5.fit = lm(crmrte ~  log(prbarr) + log(prbconv) +
                 log(polpc) + density + as.factor(region) + 
-                poly(wfed,3) + pctymle + .*., data = Crime)
+                poly(wfed,3) + pctymle + .*., data = cCrime)
 ```
 
 
@@ -443,9 +444,9 @@ interaction.fit = stepAIC(lm.5.fit)
 ```
 
 ```{R}
-pred = predict(interaction.fit, Crime[-test,])
+pred = predict(interaction.fit, cCrime[-test,])
 val.train.errors = mean((ys_train - pred)^2)
-pred = predict(interaction.fit, Crime[test,])
+pred = predict(interaction.fit, cCrime[test,])
 val.test.errors = mean((ys_test - pred)^2)
 
 ```
