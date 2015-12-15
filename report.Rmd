@@ -158,8 +158,8 @@ ggpairs(covar) + theme_fivethirtyeight()
 
 In the graphs above we show the correlation between the selected predictors and between the predictors and the target. The highest value of correlation is between the target variable and `density`. Other high values of correlation involve variables `wmfg`, `wfed` and `density`. We will later discuss whether these variables are significant for modeling.
 
-\section{Leveraged points detection}
-
+# Analysis
+## Leveraged Points Detection
 Just in orter to identify leveraged points, we run a linear model with all the continous variables as predictors. Then, we calculated the cook distance and trace a levaraged point plot. 
 
 ```{r, echo=FALSE}
@@ -178,8 +178,7 @@ plot(lm.fit, which=4, cook.levels=cutoff)
 
 We identified the points index 200, 440 and 586 as possible leveraged points. A 
 
-\section{ANOVA models}
-
+## ANOVA models
 In the first analysis, we model the mean of the target variable using a two-level factor. We aggregate all values of `region` (`west`, `central` and `other`) into `w` and `nw`, whether they take value equal to `west` or not. Running _ANOVA_, we obtain the following output:
 
 ```{r, echo=FALSE}
@@ -709,8 +708,7 @@ error.spl2 = mean(abs((pred.spl2$fit-Crime.test$crmrte)/Crime.test$crmrte))
 
 Finally, we included the splined version of `pctmin` predictor alongside the selected predictors, which resulted in a slight improvement in mean error to `r round(error.spl2, 4)`.
 
-# Residual Analysis
-
+## Residual Analysis
 To perform the residual analysis on our final project, we produced the following plot:
 
 ```{r}
@@ -720,10 +718,8 @@ grid.arrange(lmPl$rvfPlot, lmPl$qqPlot, lmPl$sclLocPlot, lmPl$rvlevPlot, ncol=2)
 ```
 
 We observe the following: 
-
 * First, we appreciate from the _Residuual vs Fitted_  and the _Scale-Location_ plots that the residual variance seems to be homoscedastic, this means that it is constant. However the residuals are slighlty lower with smaller and larger values of the response variable.
-
 * The _Normal QQ-Plot_ shows that the quantiles of the standardized residuals versus the quantiles of a standard normal are similiar, and meet the line reference almost perfectly except for the extreme points.
-
 * The _Residuual vs Leverage_ plot exhibits that we do not have high-leveraged residuals and that the Cook's distances are not large in general, indicating that we do not count with influential observations or outliers.
 
+# Summary
