@@ -158,7 +158,8 @@ ggpairs(covar) + theme_fivethirtyeight()
 
 In the graphs above we show the correlation between the selected predictors and between the predictors and the target. The highest value of correlation is between the target variable and `density`. Other high values of correlation involve variables `wmfg`, `wfed` and `density`. We will later discuss whether these variables are significant for modeling.
 
-\section{Influencial observation detection}
+# Analysis
+## Influencial Observation Detection
 
 Just in order to identify influencial points, we run a linear model with all the continous variables as predictors. Then, we calculated the cook distance of each observation and traced a plot. We detected the observations that have a cook distance value greater than 0.5. This treshold value was calculated as the average of two methods. 
 
@@ -181,7 +182,6 @@ kable(data.frame(Cooks.Dist=lev.p))
 
 Crime = Crime[-as.numeric(names(lev.p)),]
 ```
-
 
 ## ANOVA models
 In the first analysis, we model the mean of the target variable using a two-level factor. We aggregate all values of `region` (`west`, `central` and `other`) into `w` and `nw`, whether they take value equal to `west` or not. Running _ANOVA_, we obtain the following output:
@@ -338,13 +338,11 @@ lm.fit = lm(crmrte ~ ., data = Crime)
 summary(lm.fit)
 ```
 
-as the $R^2$ value is sufficiently high (as the $R^2$ value is sufficiently high ($`r summary(lm.fit)$r.squared`$), we decided to perform $`best subset selection`$ on the set of predictors. Although we are aware of the performance penalties of doing this for $p = 23$, the running times were considerably short and hence we decided to stick to this approach: 
-
 ```{R, cache = TRUE}
 bestsubset=regsubsets(y ~ ., data = data.frame(y = ys_train, x = xs_train), nvmax = p)
 ```
 
-After getting all best subsets with size $k = 1...p$, we analysed both _training_ and _testing_ errors by performing _k-fold cross validation_ with $k = 10$ and then getting the minimum errors on all iterations: 
+as the $R^2$ value is sufficiently high ($`r summary(lm.fit)$r.squared`$), we decided to perform _best subset selection_ on the set of predictors. Although we are aware of the performance penalties of doing this for $p = 23$, the running times were considerably short and hence we decided to stick to this approach. Finally, after getting all best subsets with size $k = 1...p$, we analysed both _training_ and _testing_ errors by performing _k-fold cross validation_ with $k = 10$ and then getting the minimum errors on all iterations.
 
 
 ```{R}
@@ -505,7 +503,6 @@ lasso.mod=cv.glmnet(xs_lasso[-test ,],ys_train,alpha=1,lambda=grid)
 ```
 
 
-
 ```{R, out.width='350px', fig.align='center'}
 ggplot.glmnet = function(cv.glmnet.obj){
   tidied_cv <- tidy(cv.glmnet.obj)
@@ -595,7 +592,7 @@ base.plot +
 ```
 \begin{center} Figure 1: Linear model for crime rate vs. proportion of minorities \end{center}
 
-This naive model results in a MSE of $`r round(mse.lin,7)`$ and an error rate of `r round(error.lin,4)` for the testing set. From the plot, it is clear that the relationship between the crime rate and the proportion of minorities in the area is not linear. 
+This naive model results in a MSE of $`r round(mse.lin,7)`$ and a mean approximation error rate of `r round(error.lin,4)` for the testing set. From the plot, it is clear that the relationship between the crime rate and the proportion of minorities in the area is not linear. 
 
 ### Polynomial Model
 Next, we obtained a degree-4 polynomial function for a smooth fit over the `pctmin` data:
@@ -625,7 +622,7 @@ base.plot +
 ```
 \begin{center} Figure 2: Degree-4 polynomial model for crime rate vs. proportion of minorities \end{center}
 
-This fit resulted in a MSE of $`r round(mse.poly,7)`$ and an error rate of `r round(error.poly,4)`. The model was improved by reducing the bias of the model.
+This fit resulted in a MSE of $`r round(mse.poly,7)`$ and a mean approximation error rate of `r round(error.poly,4)`. The model was improved by reducing the bias of the model.
 
 ### Splines
 ```{r}
@@ -662,7 +659,7 @@ base.plot +
 Figure 3: Natural cubic splines model for crime rate vs. proportion of minorities
 \end{center}
 
-Consequently, we see a modest improvement in the MSE ($`r round(mse.spl,7)`$) and the mean error (`r round(error.spl,4)`).
+Consequently, we see a modest improvement in the MSE ($`r round(mse.spl,7)`$) and the mean approximation error (`r round(error.spl,4)`).
 
 We also attempted to fit a smoothing spline with a value of $\lambda$ chosen using cross-validation. This resulted in a model very similar to the polynomial fit and failed to improve the mean testing error.
 
@@ -685,7 +682,7 @@ mse.lin2 = mean((pred.lin2-Crime.test$crmrte)^2)
 error.lin2 = mean(abs((pred.lin2-Crime.test$crmrte)/Crime.test$crmrte))
 ```
 
-Combining the predictors from the previous section with just the linear `pctmin` results in a MSE of $`r round(mse.lin2,8)`$ and a mean error of `r round(error.lin2,4)`.
+Combining the predictors from the previous section with just the linear `pctmin` results in a MSE of $`r round(mse.lin2,8)`$ and a mean approximation error of `r round(error.lin2,4)`.
 
 ```{r}
 # Splines with selected predictors
@@ -704,7 +701,7 @@ mse.spl2 = mean((pred.spl2$fit-Crime.test$crmrte)^2)
 error.spl2 = mean(abs((pred.spl2$fit-Crime.test$crmrte)/Crime.test$crmrte))
 ```
 
-Finally, we included the splined version of `pctmin` predictor alongside the selected predictors, which resulted in a slight improvement in the MSE to $`r round(mse.spl2,8)`$ and the mean error to `r round(error.spl2, 4)`.
+Finally, we included the splined version of `pctmin` predictor alongside the selected predictors, which resulted in a slight improvement in the MSE to $`r round(mse.spl2,8)`$ and the mean approximation error to `r round(error.spl2, 4)`.
 
 ## Residual Analysis
 To perform the residual analysis on our final project, we produced the following plot:
@@ -723,3 +720,4 @@ We observe the following:
 * The _Residual vs Leverage Plot_ exhibits that one of the residuals is highly leveraged and has a large Cook's distance, this corresponds to an observation which is both influential and an outlier. The rest of the residuals have a more regular behaviour.
 
 # Summary
+
