@@ -82,7 +82,7 @@ boxplot_crmte_cat = function(variable, data = Crime){
   plot_df= data.frame(y = data[,variable], x = data$crmrte_cat)
   plot = ggplot(plot_df) + geom_boxplot(aes(y= y, x = x, fill=x)) + 
         theme_fivethirtyeight() + labs(title = variable, x= "crmrte_cat", y = variable )+
-        scale_fill_fivethirtyeight("cyl")+
+        scale_fill_fivethirtyeight()+
         theme(legend.position="none")
   
   return(plot)
@@ -129,7 +129,7 @@ In the boxplots above, we can see that the variables that may have a predictive 
 
 ```{r, echo=FALSE, out.width='350px', fig.align='center'}
 ggplot(Crime) + geom_bar(aes(x =factor(year), fill=crmrte_cat )) +
-  scale_fill_fivethirtyeight("cyl") + theme_fivethirtyeight() + labs(title='Crime Rate by Year', x = "Crime Rate")
+  scale_fill_fivethirtyeight() + theme_fivethirtyeight() + labs(title='Crime Rate by Year', x = "Crime Rate")
   
 #no significance difference
 ```
@@ -138,11 +138,11 @@ From the above plot, we notice that there is no significant trend on the crime r
 
 ```{r, echo=FALSE, out.width='350px', fig.align='center'}
 crime_region = ggplot(Crime) + geom_bar(aes(x = crmrte_cat, fill = crmrte_cat)) + facet_grid(region~.)+
-  theme_fivethirtyeight()+ scale_fill_fivethirtyeight("cyl")  + labs(title = "Crime Rate by Region", x = "Crime Rate")
+  theme_fivethirtyeight()+ scale_fill_fivethirtyeight()  + labs(title = "Crime Rate by Region", x = "Crime Rate")
 #candidate to test anova region west
 
 crime_smsa = ggplot(Crime) + geom_bar(aes(x = crmrte_cat, fill = crmrte_cat)) + facet_grid(smsa~.)+
-  theme_fivethirtyeight()+ scale_fill_fivethirtyeight("cyl")  + labs(title = "Crime Rate by SMSA", x = "Crime Rate")
+  theme_fivethirtyeight()+ scale_fill_fivethirtyeight()  + labs(title = "Crime Rate by SMSA", x = "Crime Rate")
 
 grid.arrange(crime_region, crime_smsa, ncol=2)
 
