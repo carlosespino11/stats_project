@@ -5,7 +5,8 @@ date: "December 14, 2015"
 graphics: yes
 output:
   pdf_document:
-    toc: true
+    number_sections: yes
+    toc: yes
 ---
 ```{r global_options, include=FALSE}
 knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/',
@@ -74,7 +75,7 @@ Crime = Crime[,-1] # Remove the index column
 
 We analyzed the variables in the dataset starting with the target variable: `crmrte`, the crime rate. Along this study, we will use this variable in different forms. We define a categorical value equal to one representing high crime rate, when the value of the target variable is higher that its median value. We called this variable `crmrte_cat`. Also, we will use the natural logarithm of the variable to adequately transform it to apply different statisticals models to predict and describe the data. We assume that the target value depends on the other variables. The behaviour of the target is represented with a boxplot, a softened histogram of the variable, and a softened histogram of the logarithm of the variable.
 
-```{r, echo=FALSE}
+```{r, echo=FALSE,out.width='350px', fig.align='center'}
 boxplot_crmte_cat = function(variable, data = Crime){
   plot_df= data.frame(y = data[,variable], x = data$crmrte_cat)
   plot = ggplot(plot_df) + geom_boxplot(aes(y= y, x = x, fill=x)) + 
@@ -124,7 +125,7 @@ grid.arrange(boxplot_crmte_cat("wmfg"),boxplot_crmte_cat("wfed"), boxplot_crmte_
 
 In the boxplots above, we can see that the variables that may have a predictive value with the target are variables `prbarr`, `density`, `pctmin`, `wfed`, `wmfg` and `pctymle` as they separate the population partially by the value of the defined target variable. We explore the rest of the predictors by tracing them on the following charts, starting with the variable `year`.
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, out.width='350px', fig.align='center'}
 ggplot(Crime) + geom_bar(aes(x =factor(year), fill=crmrte_cat )) +
   scale_fill_fivethirtyeight("cyl") + theme_fivethirtyeight() + labs(title='Crime Rate by Year', x = "Crime Rate")
   
@@ -133,9 +134,7 @@ ggplot(Crime) + geom_bar(aes(x =factor(year), fill=crmrte_cat )) +
 
 From the above plot, we notice that there is no significant trend on the crime rate along the timeline being considered. The other two variables with categorical values are `region` and `smsa`.
 
-```{r, echo=FALSE}
-
-
+```{r, echo=FALSE, out.width='350px', fig.align='center'}
 crime_region = ggplot(Crime) + geom_bar(aes(x = crmrte_cat, fill = crmrte_cat)) + facet_grid(region~.)+
   theme_fivethirtyeight()+ scale_fill_fivethirtyeight("cyl")  + labs(title = "Crime Rate by Region", x = "Crime Rate")
 #candidate to test anova region west
@@ -286,7 +285,7 @@ The results are similar to the simpler sign test.
 
 Continuing with the analysis we fitted a decision tree model. To do so, we considered the target variable in the categorical format. The purpose of this model is to further explore the data and understand which variables are relevant to the response.
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, out.width='150px', fig.align='center'}
 n=626
 test = sample(c(T,F),size=n,prob=c(0.4,0.6),replace=TRUE)
 fit <-rpart(crmrte_cat ~prbarr+prbpris+density+pctmin+wfir+wmfg+wfed+region+smsa,data=Crime[-test,]
@@ -547,7 +546,7 @@ lasso.mod=cv.glmnet(xs_lasso[-test ,],ys_train,alpha=1,lambda=grid)
 
 
 
-```{R}
+```{R, out.width='350px', fig.align='center'}
 ggplot.glmnet = function(cv.glmnet.obj){
   tidied_cv <- tidy(cv.glmnet.obj)
   glance_cv <- glance(cv.glmnet.obj)
@@ -731,6 +730,7 @@ Combining the predictors from the previous section with just the linear `pctmin`
 
 ```{r}
 # Splines with selected predictors
+# Splines with selected predictors
 fit.spl2 = list()
 pred.spl2 = list()
 kf.error.spl2 = vector()
@@ -748,3 +748,13 @@ error.spl2 = mean(abs((pred.spl2$fit-Crime.test$crmrte)/Crime.test$crmrte))
 ```
 
 Finally, we included the splined version of `pctmin` predictor alongside the selected predictors, which resulted in a slight improvement in mean error to `r round(error.spl2, 4)`.
+
+# Residual Analysis
+
+
+```{r}
+lmPl = diagPlot(fit.spl2[[best.index.spl2]]) 
+grid.arrange(lmPl$rvfPlot, lmPl$qqPlot, lmPl$sclLocPlot, lmPl$rvlevPlot, ncol=2)
+
+```
+
