@@ -69,8 +69,8 @@ Crime = Crime[,-1] # Remove the index column
 
 # Identify and remove the outliers found from later analyses
 # fit.all <- lm(crmrte~bs(pctmin, knots=pctmin.knots) + log(prbconv) + log(polpc) + prbarr + density:county + prbarr:prbpris + pctmin:polpc + polpc:wfed + density:pctmin + density:pctymle + taxpc:wfed + region:wsta, data=Crime)
-bad = c(440,353,437,439)
-Crime = Crime[-bad,]
+#bad = c(440,353,437,439)
+#Crime = Crime[-bad,]
 ```
 
 We analyzed the variables in the dataset starting with the target variable: `crmrte`, the crime rate. Along this study, we will use this variable in different forms. We define a categorical value equal to one representing high crime rate, when the value of the target variable is higher that its median value. We called this variable `crmrte_cat`. Also, we will use the natural logarithm of the variable to adequately transform it to apply different statisticals models to predict and describe the data. We assume that the target value depends on the other variables. The behaviour of the target is represented with a boxplot, a softened histogram of the variable, and a softened histogram of the logarithm of the variable.
@@ -156,6 +156,26 @@ ggpairs(covar) + theme_fivethirtyeight()
 
 In the graphs above we show the correlation between the selected predictors and between the predictors and the target. The highest value of correlation is between the target variable and `density`. Other high values of correlation involve variables `wmfg`, `wfed` and `density`. We will later discuss whether these variables are significant for modeling.
 
+\section{Leveraged points detection}
+
+Just in orter to identify leveraged points, we run a linear model with all the continous variables as predictors. Then, we calculated the cook distance and trace a levaraged point plot. 
+
+```{r, echo=FALSE}
+
+formul <-'crmrte~ year + prbarr + prbconv + prbpris+avgsen+polpc+density+taxpc+region+smsa+pctmin+wcon+wtuc+
+  wtrd+ wfir+ wser +wmfg+wfed+wsta+wloc+mix+pctymle'   
+#bad = c(440,353,437,439)
+#Crime = Crime[-bad,]
+
+lm.fit <- lm(formul, data=Crime)
+
+cutoff <- 4/((nrow(Crime)-length(lm.fit$coefficients)-2)) 
+plot(lm.fit, which=4, cook.levels=cutoff)
+
+```
+
+We identified the points index 200, 440 and 586 as possible leveraged points. A 
+
 \section{ANOVA models}
 
 In the first analysis, we model the mean of the target variable using a two-level factor. We aggregate all values of `region` (`west`, `central` and `other`) into `w` and `nw`, whether they take value equal to `west` or not. Running _ANOVA_, we obtain the following output:
@@ -230,7 +250,7 @@ k
 From the vector of sorted values for `crmrte`, we select the $k-th$ elements of the vector and the $n-k+1$ elements corresponding to the four confidence intervals: 
 
 ```{r, echo=FALSE}
-n <- 626
+n <- nrow(Crime)
 #1 - 2 * pbinom(k, n, 1 / 2)
 perc <- c(0.99,0.95,0.88,0.81)
 col_nam <- c('signif.%', 'low.level', 'up.level')
