@@ -404,7 +404,7 @@ Next, we proceeded to graphically analyse any nonlinearities between these predi
 fitnames = c("prbarr" , "prbconv" , "polpc" , "density" ,
              "as.factor(region)" , "pctmin" , "wfed" ,
              "pctymle", "crmrte")
-pairs(Crime[names(Crime) %in% fitnames])
+ggpairs(Crime[names(Crime) %in% fitnames])
 ```
 
 It can be seen that the relationship between `crmrte` and `prbrarr`, `prbconv` and `polpc`, respectively, could be better explained by applying a _log_ to these predictors. Additionally, `wfed` has a nonlinear relationship with the response, which makes it suitable as a polynomial regression predictor. Consequently, we run a new, nonlinear model with these modified predictors: 
@@ -731,10 +731,19 @@ Finally, we included the splined version of `pctmin` predictor alongside the sel
 
 # Residual Analysis
 
+To perform the residual analysis on our final project, we produced the following plot:
 
 ```{r}
 lmPl = diagPlot(fit.spl2[[best.index.spl2]]) 
 grid.arrange(lmPl$rvfPlot, lmPl$qqPlot, lmPl$sclLocPlot, lmPl$rvlevPlot, ncol=2)
 
 ```
+
+We observe the following: 
+
+* First, we appreciate from the _Residuual vs Fitted_  and the _Scale-Location_ plots that the residual variance seems to be homoscedastic, this means that it is constant. However the residuals are slighlty lower with smaller and larger values of the response variable.
+
+* The _Normal QQ-Plot_ shows that the quantiles of the standardized residuals versus the quantiles of a standard normal are similiar, and meet the line reference almost perfectly except for the extreme points.
+
+* The _Residuual vs Leverage_ plot exhibits that we do not have high-leveraged residuals and that the Cook's distances are not large in general, indicating that we do not count with influential observations or outliers.
 
