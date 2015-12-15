@@ -41,7 +41,7 @@ Understanding the factors behind criminal behaviour is one of the most crucial t
 | wfir     | weekly wage in finance, insurance and real estate                              |   |
 | wser     | weekly wage in service industry                                                |   |
 | wmfg     | weekly wage in manufacturing                                                   |   |
-| wfed     | weekly wage of federal emplyees                                                |   |
+| wfed     | weekly wage of federal employees                                              |   |
 | wsta     | weekly wage of state employees                                                 |   |
 | wloc     | weekly wage of local governments employees mix offence mix: face-to-face/other |   |
 | pctymle  | percentage of young males                                                      |   |
@@ -719,12 +719,12 @@ We observe the following:
 
 * The _Residual vs Leverage Plot_ exhibits that one of the residuals is highly leveraged and has a large Cook's distance, this corresponds to an observation which is both influential and an outlier. The rest of the residuals have a more regular behaviour.
 
-# Conclusions
+# Conclusion
 In this project, we wanted to apply methods and knowledge learned in the class to a real-world data. Using crime rate data in North Carolina from 1981 to 1987, we aimed to build a robust model that could be used predict the crime rate and understand some of the underlying factors behind the crime rate. Toward this goal, we followed a methodology that consists in a series of steps, each of this corresponding to a statistical learning topic covered along the semester.
 
 First, we indentified our target variable and explored their median value. We examined the predictors and their relationship with the response. Then, we noticed which variables were significant and correlated. We detected influential observations and removed them accordingly. After cleaning the dataset, we run an ANOVA model and a decision tree algorithm to confirm their interdependece.
 
-
+We created a linear regression model containing all the predictors, performed best subset selection to determine the best combination of predictors to use for our predictive model. We further removed more predictors using lasso regression, which yielded 13 non-zero predictors. During this analysis, we also identified a predictor with a non-linear relationship that could benefit from a polynomial/splines modeling instead. Finally, we arrive at a predictive model that includes the predictors from the shrinkage analysis and the splines of the non-linear predictor. The progression of the mean squared errors is shown below:
 
 ```{r}
 model = c("linear+best subset", "linear+interactions (stepwise selection)", "linear+interactions (LASSO)", "lasso results + splines")
@@ -735,6 +735,6 @@ testing_mse = c(test.errors.bestsubset, val.test.errors, lasso_rss, mse.spl2)
 kable(data.frame(model = model, trainingMSE = training_mse, testingMSE = testing_mse))
 ```
 
-After the exploration, 
+Some of the variables identified through the methods include the percentage of minorities in the area (`pctmin`), interactions with population density (`density`) and region (`region`), weekly federal wages (`wfed`), as well as the probability of arrest (`prbarr`) and conviction (`prbconv`). Considering there were many more variables included in the dataset that one would assume to be related to incidence of crime, our model identified several statistically relevant predictors that might warrant a closer look in relation to crime rates.
 
 
