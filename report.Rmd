@@ -535,7 +535,9 @@ kable(split(lasso_vars, ceiling(length(lasso_vars) / 5)))
 
 ```{R}
 ys_lasso_pred = predict(lasso.mod.3, xs_lasso_test, s = lasso.mod$lambda.1se)
+ys_lasso_pred_train = predict(lasso.mod.3, xs_lasso_train, s = lasso.mod$lambda.1se)
 lasso_rss = mean((ys_test - ys_lasso_pred)^2)
+lasso_train = mean((ys_train - ys_lasso_pred_train)^2)
 ```
 
 This means a reduction of `r round(((length(interaction.fit$coefficients) - length(lasso_vars)) / length(interaction.fit$coefficients))*100)`$\%$ with respect to the number of predictors returned by _stepwise AIC_. The _testing MSE_ for this model is $`r lasso_rss`$ and this error is `r (lasso_rss / test.errors.bestsubset) * 100`% of the _testing MSE_ of our original model using _best subset selection_.  Finally, we analysed the $L1$-norm between our estimated responses and the true model, also called _approximation error_, as:
@@ -728,11 +730,11 @@ First, we indentified our target variable and explored their median value. We ex
 We created a linear regression model containing all the predictors, performed best subset selection to determine the best combination of predictors to use for our predictive model. We further removed more predictors using lasso regression, which yielded 13 non-zero predictors. During this analysis, we also identified a predictor with a non-linear relationship that could benefit from a polynomial/splines modeling instead. Finally, we arrive at a predictive model that includes the predictors from the shrinkage analysis and the splines of the non-linear predictor. The progression of the mean squared errors is shown below:
 
 ```{r}
-model = c("linear+best subset", "linear+interactions (stepwise selection)", "linear+interactions (LASSO)", "lasso results + splines")
-training_mse = c(train.errors.bestsubset, val.train.errors,
-                 mean((ys_test -  predict(lasso.mod.3, xs_lasso_test, s = lasso.mod$lambda.1se))^2),
+model = c("linear+best subset", "linear+interactions (LASSO)", "lasso results + splines")
+training_mse = c(train.errors.bestsubset,
+                 lasso_train,
                  mean((predict(fit.spl2[[best.index.spl2]], newdata=Crime.train, se.fit=TRUE)$fit-Crime.train$crmrte)^2))
-testing_mse = c(test.errors.bestsubset, val.test.errors, lasso_rss, mse.spl2)
+testing_mse = c(test.errors.bestsubset, lasso_rss, mse.spl2)
 kable(data.frame(model = model, trainingMSE = training_mse, testingMSE = testing_mse))
 ```
 
