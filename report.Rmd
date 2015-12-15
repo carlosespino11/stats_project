@@ -537,7 +537,11 @@ ys_lasso_pred = predict(lasso.mod.3, xs_lasso_test, s = lasso.mod$lambda.1se)
 lasso_rss = mean((ys_test - ys_lasso_pred)^2)
 ```
 
-This means a reduction of `r round(((length(interaction.fit$coefficients) - length(lasso_vars)) / length(interaction.fit$coefficients))*100)`$\%$ with respect to the number of predictors returned by _stepwise AIC_. The _testing MSE_ for this model is $`r lasso_rss`$ and this error is `r (lasso_rss / test.errors.bestsubset) * 100`% of the _testing MSE_ of our original model using _best subset selection_.  Finally, we analysed the $L1$-norm between our estimated responses and the true model, which yielded a value of `r mean(abs((ys_test - ys_lasso_pred)/ ys_test))`, which is more than reasonable since it's below $30\%$. Consequently, the final set obtained in this section, after performing _linear_, _best subset selection_, _log_, _polynomial_, _stepwise AIC_ and _Lasso_ yielded a model that will be used in the following sections for more complex fits that will derive in our final model.
+This means a reduction of `r round(((length(interaction.fit$coefficients) - length(lasso_vars)) / length(interaction.fit$coefficients))*100)`$\%$ with respect to the number of predictors returned by _stepwise AIC_. The _testing MSE_ for this model is $`r lasso_rss`$ and this error is `r (lasso_rss / test.errors.bestsubset) * 100`% of the _testing MSE_ of our original model using _best subset selection_.  Finally, we analysed the $L1$-norm between our estimated responses and the true model, also called _approximation error_, as:
+
+$$ \frac{1}{n} \sum\limits_{i = 1}^{n}\Bigg|\frac{y_i - \hat{y}_{lasso_i}}{y_i}\Bigg|$$
+
+which yielded a value of `r mean(abs((ys_test - ys_lasso_pred)/ ys_test))`, which is more than reasonable since it's below $30\%$. Consequently, the final set obtained in this section, after performing _linear_, _best subset selection_, _log_, _polynomial_, _stepwise AIC_ and _Lasso_ yielded a model that will be used in the following sections for more complex fits that will derive in our final model.
 
 ## Non-linear Modeling
 \label{sec:nonlinear}
