@@ -1,7 +1,7 @@
 ---
 title: "Understanding and Predicting Crime Rates Using Statistical Methods"
 author: "Carlos Espino, Xavier Gonzalez, Diego Llarrull, Woojin Kim"
-date: "December 14, 2015"
+date: "December 15, 2015"
 graphics: yes
 output:
   pdf_document:
@@ -291,7 +291,7 @@ The results are similar to the simpler sign test.
 
 Continuing with the analysis we fitted a decision tree model. To do so, we considered the target variable in the categorical format. The purpose of this model is to further explore the data and understand which variables are relevant to the response.
 
-```{r, echo=FALSE, out.width='150px', fig.align='center'}
+```{r, echo=FALSE, out.width='350px', fig.align='center'}
 n=626
 test = sample(c(T,F),size=n,prob=c(0.4,0.6),replace=TRUE)
 fit <-rpart(crmrte_cat ~prbarr+prbpris+density+pctmin+wfir+wmfg+wfed+region+smsa,data=Crime[-test,]
@@ -630,7 +630,7 @@ This fit resulted in a MSE of $`r round(mse.poly,7)`$ and an error rate of `r ro
 ### Splines
 ```{r}
 # Natural spline knots
-pctmin.knots = attr(ns(Crime.train$pctmin, df=6), "knots")
+pctmin.knots = attr(ns(Crime.train$pctmin, df=8), "knots")
 
 # Only splines $pctmin
 fit.spl = list()
@@ -647,7 +647,7 @@ pred.spl = predict(fit.spl[[best.index.spl]], newdata=Crime.test, se.fit=TRUE)
 mse.spl = mean((pred.spl$fit-Crime.test$crmrte)^2)
 error.spl = mean(abs((pred.spl$fit-Crime.test$crmrte)/Crime.test$crmrte))
 ```
-We further attempt to reduce the bias, introducing a more flexible piecewise polynomial by using knots. With a cubic spline, the fitted curves and their first and second derivatives are constrained to be continuous at the knots. As splines often lead to high variance at the outer ranges of the predictors, we fit a natural cubic spline, which forces the function to be linear at the boundary. `ns()` function was used to generate natural cubic knots with 6 degrees of freedom, with matrix of basis functions for splines and knots at `r round(pctmin.knots[1],2)`%, `r round(pctmin.knots[2],2)`%, `r round(pctmin.knots[3],2)`%, `r round(pctmin.knots[4],2)`%, and `r round(pctmin.knots[5],2)`% of `pctmin`.
+We further attempt to reduce the bias, introducing a more flexible piecewise polynomial by using knots. With a cubic spline, the fitted curves and their first and second derivatives are constrained to be continuous at the knots. As splines often lead to high variance at the outer ranges of the predictors, we fit a natural cubic spline, which forces the function to be linear at the boundary. `ns()` function was used to generate natural cubic knots with 8 degrees of freedom, with matrix of basis functions for splines and knots at `r round(pctmin.knots[1],1)`%, `r round(pctmin.knots[2],1)`%, `r round(pctmin.knots[3],1)`%, `r round(pctmin.knots[4],1)`%, `r round(pctmin.knots[5],1)`%, `r round(pctmin.knots[6],1)`%, and `r round(pctmin.knots[7],1)`% of `pctmin`.
 
 ```{r out.width='350px', fig.align='center'}
 # Plot
@@ -666,13 +666,15 @@ Consequently, we see a modest improvement in the MSE ($`r round(mse.spl,7)`$) an
 
 We also attempted to fit a smoothing spline with a value of $\lambda$ chosen using cross-validation. This resulted in a model very similar to the polynomial fit and failed to improve the mean testing error.
 
+
+### Combined models
 ```{r}
 # Linear $pctmin with selected predictors
 fit.lin2 = list()
 pred.lin2 = list()
 kf.error.lin2 = vector()
 for (i in 1:length(folds)) {
-  fit.lin2[[i]] = lm(crmrte~pctmin + log(prbconv) + log(polpc) + poly(wfed, 3) + year + prbarr + wfed + pctmin:county + prbarr:wfir + polpc:region + density:region + density:pctmin + density:pctymle + pctmin:region + region:wsta + region:mix + pctymle:region, data=Crime.train[-folds[[i]],])
+  fit.lin2[[i]] = lm(crmrte~pctmin + log(prbconv) + log(polpc) + poly(wfed,3) + prbarr + wfed + pctmin:county + polpc:region + density:region + density:pctmin + density:pctymle + pctmin:region + region:wsta + pctymle:region, data=Crime.train[-folds[[i]],])
   pred.lin2 = predict(fit.lin2[[i]], newdata=Crime.train[folds[[i]],])
   test.lin2.k = Crime.train[folds[[i]],]$crmrte
   kf.error.lin2[i] = mean(abs((pred.lin2 - test.lin2.k)/test.lin2.k))
@@ -683,7 +685,6 @@ mse.lin2 = mean((pred.lin2-Crime.test$crmrte)^2)
 error.lin2 = mean(abs((pred.lin2-Crime.test$crmrte)/Crime.test$crmrte))
 ```
 
-### Combined models
 Combining the predictors from the previous section with just the linear `pctmin` results in a MSE of $`r round(mse.lin2,8)`$ and a mean error of `r round(error.lin2,4)`.
 
 ```{r}
@@ -692,7 +693,7 @@ fit.spl2 = list()
 pred.spl2 = list()
 kf.error.spl2 = vector()
 for (i in 1:length(folds)) {
-  fit.spl2[[i]] = lm(crmrte ~ ns(pctmin, knots=pctmin.knots) + log(prbconv) + log(polpc) + poly(wfed, 3) + year + prbarr + wfed + pctmin:county + prbarr:wfir + polpc:region + density:region + density:pctmin + density:pctymle + pctmin:region + region:wsta + region:mix + pctymle:region, data=Crime.train[-folds[[i]],])
+  fit.spl2[[i]] = lm(crmrte ~ ns(pctmin, knots=pctmin.knots) + log(prbconv) + log(polpc) + poly(wfed,3) + prbarr + wfed + pctmin:county + polpc:region + density:region + density:pctmin + density:pctymle + pctmin:region + region:wsta + pctymle:region, data=Crime.train[-folds[[i]],])
   pred.spl2 = predict(fit.spl2[[i]], newdata=Crime.train[folds[[i]],])
   test.spl2.k = Crime.train[folds[[i]],]$crmrte
   kf.error.spl2[i] = mean(abs((pred.spl2 - test.spl2.k)/test.spl2.k))
@@ -703,7 +704,7 @@ mse.spl2 = mean((pred.spl2$fit-Crime.test$crmrte)^2)
 error.spl2 = mean(abs((pred.spl2$fit-Crime.test$crmrte)/Crime.test$crmrte))
 ```
 
-Finally, we included the splined version of `pctmin` predictor alongside the selected predictors, which resulted in a slight improvement in mean error to `r round(error.spl2, 4)`.
+Finally, we included the splined version of `pctmin` predictor alongside the selected predictors, which resulted in a slight improvement in the MSE to $`r round(mse.spl2,8)`$ and the mean error to `r round(error.spl2, 4)`.
 
 ## Residual Analysis
 To perform the residual analysis on our final project, we produced the following plot:
@@ -711,14 +712,14 @@ To perform the residual analysis on our final project, we produced the following
 ```{r}
 lmPl = diagPlot(fit.spl2[[best.index.spl2]]) 
 grid.arrange(lmPl$rvfPlot, lmPl$qqPlot, lmPl$sclLocPlot, lmPl$rvlevPlot, ncol=2)
-
 ```
 
 We observe the following: 
-* First, we appreciate from the _Residuual vs Fitted_  and the _Scale-Location_ plots that the residual variance seems to be homoscedastic, this means that it is constant. However the residuals are slighlty lower with smaller and larger values of the response variable.
 
-* The _Normal QQ-Plot_ shows that the quantiles of the standardized residuals versus the quantiles of a standard normal are similiar, and meet the line reference almost perfectly except for the extreme points. This indicates that our residuals follow the normality hypothesis.
+* First, we notice that the residual variance is homoscedastic from the _Residual vs Fitted_  and the _Scale-Location_ plots , this means that it is constant. However the residuals are slighlty lower with smaller and larger values of the response variable. Additionally, you can see that the mean of the residuals is 0.
 
-* The _Residuual vs Leverage_ plot exhibits that we do not have high-leveraged residuals and that the Cook's distances are not large in general, indicating that we do not count with influential observations or outliers.
+* The _Normal Q-Q Plot_ shows that the quantiles of the standardized residuals versus the quantiles of a standard normal are similiar, and meet the line reference almost perfectly except for the extreme points. This indicates that our residuals follow the normality hypothesis.
+
+* The _Residual vs Leverage Plot_ exhibits that we do not have high-leveraged residuals and that the Cook's distances are not large in general, indicating that we do not count with influential observations or outliers.
 
 # Summary
