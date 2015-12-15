@@ -763,7 +763,7 @@ We observe the following:
 
 * First, we appreciate from the _Residuual vs Fitted_  and the _Scale-Location_ plots that the residual variance seems to be homoscedastic, this means that it is constant. However the residuals are slighlty lower with smaller and larger values of the response variable.
 
-* The _Normal QQ-Plot_ shows that the quantiles of the standardized residuals versus the quantiles of a standard normal are similiar, and meet the line reference almost perfectly except for the extreme points.
+* The _Normal QQ-Plot_ shows that the quantiles of the standardized residuals versus the quantiles of a standard normal are similiar, and meet the line reference almost perfectly except for the extreme points. This indicates that our residuals follow the normality hypothesis.
 
 * The _Residuual vs Leverage_ plot exhibits that we do not have high-leveraged residuals and that the Cook's distances are not large in general, indicating that we do not count with influential observations or outliers.
 
