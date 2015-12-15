@@ -316,7 +316,6 @@ We get a testing accuracy of 83% and verify that the most relevant variables to 
 
 ## Linear Analysis
 \label{sec:lin_analysis}
-Additionally, we considered a standard _linear regression_ model involving all predictors, as an alternative means to view the significance of each predictor. Note that in this context, performing _k-fold cross-validation_ or _bootstrapping_ isn't necessary as we are only interested in significant predictors, hence we performed an ordinary $80/20$ splitting of the data into a training and a testing sets as shown in the code below: 
 
 ```{R}
 set.seed(1000)
@@ -331,7 +330,7 @@ ys_train = ys[-test,]
 p = dim(xs)[2]
 ```
 
-We then run a simple linear fit will all predictors, in order to analyse the significance levels of the parameters, provided that the linear test itself has a significant $R^2$ value. 
+Additionally, we considered a standard _linear regression_ model involving all predictors, as an alternative means to view the significance of each predictor. Note that in this context, performing _k-fold cross-validation_ or _bootstrapping_ isn't necessary as we are only interested in significant predictors, hence we performed an ordinary $80/20$ splitting of the data into a training and a testing sets. We then run a simple linear fit will all predictors, in order to analyse the significance levels of the parameters, provided that the linear test itself has a significant $R^2$ value. 
 
 ```{R}
 lm.fit = lm(crmrte ~ ., data = Crime)
@@ -444,19 +443,16 @@ interaction.fit = stepAIC(lm.5.fit)
 ```
 
 ```{R}
-coefi = coef(interaction.fit)
-pred = as.matrix(xs_train[, x_cols %in% names(coefi)]) %*% coefi[names(coefi) 
-                                                                %in% x_cols]
+pred = predict(interaction.fit, Crime[-test,])
 val.train.errors = mean((ys_train - pred)^2)
-pred = as.matrix(xs_test[, x_cols %in% names(coefi)]) %*% coefi[names(coefi) 
-                                                                %in% x_cols]
+pred = predict(interaction.fit, Crime[test,])
 val.test.errors = mean((ys_test - pred)^2)
 
 ```
 
 The lack of significance of the polynomials for `wfed` and the increase in $R^2$ suggests that this model could possibly overfit. Hence, we removed the polynomials related to `wfed`, but kept the $log$ predictors as they have shown to be very significant. `pctmin` has a special behaviour, where we see that only the $3rd$ degree polynomial is used and seems less significant that the linear approach. Consequently, we decided to remove both the polynomial and the linear coefficients and re attach `pctmin` as a spline in \nameref{sec:nonlinear}. This updated model yielded a _testing MSE_ of $`r mean((ys_test - xs_predict)^2)`$, and an $R^2$ value of $`r summary(lm.3.fit)$r.squared`$.
 
-Next, we analysed all significant interactions between all original predictors and plugged them to our previous model. The number of interactions that we added to the model are $`r dim(summary(lm.4.fit)$coefficients)[1]`$ and the $R^2$ values for each fit are $`r summary(lm.4.fit)$r.squared`$ and $`r summary(lm.5.fit)$r.squared`$, respectively. Consequently, we can affirm that both models are seriously overfitting because the number of predictors has skyrocketed due to all interaction combinations. Even though it is tempting to keep only those interactions with a relevant significance value, since the removal of each of these predictors affects the overall model, we chose instead to refine it by using a _Stepwise Algorithm_ applying _AIC_ to decide. The resulting fit has $`r length(interaction.fit$coefficients)[1]`$ coefficients, which means a reduction on the number of interactions by $30\%$, we proceeded to calculate both _training MSE_ ($`r val.train.errors`$) and _testing MSE_ ($`r val.test.errors`$), yielding an error rate that remains close to one ($`r val.test.errors / val.train.errors`$) which still proves that this model holds. Now that we obtained a complex model consisting of linear variables, _log_ variables and _interaction_ variables, we will perform _Lasso_ in order to remove all interaction terms that are not significant, so that we arrive to a model easy to understand.
+Next, we analysed all possible interactions between all original predictors and plugged them to our previous model, yielding two new models. The number of interactions that we added to them is $`r dim(summary(lm.4.fit)$coefficients)[1]`$ and the $R^2$ values for each fit are $`r summary(lm.4.fit)$r.squared`$ and $`r summary(lm.5.fit)$r.squared`$, respectively. Consequently, we can affirm that both models are seriously overfitting because the number of predictors has skyrocketed due to all interaction combinations. Even though it is tempting to keep only those interactions with a relevant significance value, since the removal of each of these predictors affects the overall model, we chose instead to refine it by using a _Stepwise Algorithm_ applying _AIC_ to decide. The resulting fit has $`r length(interaction.fit$coefficients)[1]`$ coefficients, which means a reduction on the number of predictors by $`r ((dim(summary(lm.4.fit)$coefficients)[1] - length(interaction.fit$coefficients)[1]) / dim(summary(lm.4.fit)$coefficients)[1]) * 100 `\%$. We then proceeded to calculate both _training MSE_ ($`r val.train.errors`$) and _testing MSE_ ($`r val.test.errors`$). Now that we obtained a complex model consisting of linear variables, _log_ variables and _interaction_ variables, we will perform _Lasso_ in order to remove all interaction terms that are not significant, so that we arrive to a model easy to understand.
 
 ## Lasso Analysis
 With the resulting model from all our previous steps, we performed _k-fold cross validation_ using Lasso, in order to obtain the optimum value of $\lambda$ for our model. The plot showing the _cross-validation error_ as $\lambda$ increases is the following: 
@@ -541,7 +537,7 @@ ys_lasso_pred = predict(lasso.mod.3, xs_lasso_test, s = lasso.mod$lambda.1se)
 lasso_rss = mean((ys_test - ys_lasso_pred)^2)
 ```
 
-This means a reduction of `r round(((length(interaction.fit$coefficients) - length(lasso_vars)) / length(interaction.fit$coefficients))*100)`$\%$ with respect to the number of predictors returned by _stepwise AIC_. The _test error_ for this model is $`r lasso_rss`$ and this error is `r (lasso_rss / test.errors.bestsubset) * 100`% of the training error of our original model using _best subset selection_.  Finally, we analysed the $L1$-norm between our estimated responses and the true model, which yielded a value of `r mean(abs((ys_test - ys_lasso_pred)/ ys_test))`, which is more than reasonable since it's below $30\%$. Consequently, the final set obtained in this section, after performing _linear_, _best subset selection_, _log_, _polynomial_ , _stepwise AIC_ and _Lasso_ yielded a model that will be used in the following sections for more complex fits that will derive in our final model.
+This means a reduction of `r round(((length(interaction.fit$coefficients) - length(lasso_vars)) / length(interaction.fit$coefficients))*100)`$\%$ with respect to the number of predictors returned by _stepwise AIC_. The _testing MSE_ for this model is $`r lasso_rss`$ and this error is `r (lasso_rss / test.errors.bestsubset) * 100`% of the _testing MSE_ of our original model using _best subset selection_.  Finally, we analysed the $L1$-norm between our estimated responses and the true model, which yielded a value of `r mean(abs((ys_test - ys_lasso_pred)/ ys_test))`, which is more than reasonable since it's below $30\%$. Consequently, the final set obtained in this section, after performing _linear_, _best subset selection_, _log_, _polynomial_, _stepwise AIC_ and _Lasso_ yielded a model that will be used in the following sections for more complex fits that will derive in our final model.
 
 ## Non-linear Modeling
 \label{sec:nonlinear}
