@@ -540,11 +540,19 @@ lasso_rss = mean((ys_test - ys_lasso_pred)^2)
 lasso_train = mean((ys_train - ys_lasso_pred_train)^2)
 ```
 
-This means a reduction of `r round(((length(interaction.fit$coefficients) - length(lasso_vars)) / length(interaction.fit$coefficients))*100)`$\%$ with respect to the number of predictors returned by _stepwise AIC_. The _testing MSE_ for this model is $`r lasso_rss`$ and this error is `r (lasso_rss / test.errors.bestsubset) * 100`% of the _testing MSE_ of our original model using _best subset selection_.  Finally, we analysed the $L1$-norm between our estimated responses and the true model, also called _approximation error_, as:
+```{R}
+ys_lasso_modified = lm (crmrte ~  log(prbconv) + log(polpc) + poly(wfed,3) + prbarr + wfed + wsta + pctymle + county + region + density + pctmin:county + polpc:region + density:region + density:pctmin + density:pctymle + pctmin:region + region:wsta + pctymle:region + wsta + pctymle + county + region + density, data = cCrime[-test,])
+ys_lasso_modified_pred_train = predict(ys_lasso_modified, cCrime[-test,])
+ys_lasso_modified_pred_test = predict(ys_lasso_modified, cCrime[test,])
+lasso_modified_test_mse = mean((ys_test - ys_lasso_modified_pred_test)^2)
+lasso_modified_train_mse = mean((ys_train - ys_lasso_modified_pred_train)^2)
+```
+
+This means a reduction of `r round(((length(interaction.fit$coefficients) - length(lasso_vars)) / length(interaction.fit$coefficients))*100)`$\%$ with respect to the number of predictors returned by _stepwise AIC_. However, some of the interaction terms that appear involve predictors that were not in the original model (`wsta`, `pctymle`,   `county`, `region`, `pctmin` and `density`). Hence, we added these predictors (except `pctmin` which, as mentioned beforme, will be added as a spline) to the model in order to provide the final predictor set for this section. The _testing MSE_ for this model is $`r lasso_modified_test_mse`$ and this error is `r (lasso_modified_test_mse / test.errors.bestsubset) * 100`% of the _testing MSE_ of our original model using _best subset selection_.  Finally, we analysed the $L1$-norm between our estimated responses and the true model, also called _approximation error_, as:
 
 $$ \frac{1}{n} \sum\limits_{i = 1}^{n}\Bigg|\frac{y_i - \hat{y}_{lasso_i}}{y_i}\Bigg|$$
 
-which yielded a value of `r mean(abs((ys_test - ys_lasso_pred)/ ys_test))`, which is more than reasonable since it's below $30\%$. Consequently, the final set obtained in this section, after performing _linear_, _best subset selection_, _log_, _polynomial_, _stepwise AIC_ and _Lasso_ yielded a model that will be used in the following sections for more complex fits that will derive in our final model.
+which yielded a value of `r mean(abs((ys_test - ys_lasso_modified_pred_test)/ ys_test))`, which is more than reasonable since it's below $30\%$. Consequently, the final set obtained in this section, after performing _linear_, _best subset selection_, _log_, _polynomial_, _stepwise AIC_ and _Lasso_ yielded a model that will be used in the following sections for more complex fits that will derive in our final model.
 
 ## Non-linear Modeling
 \label{sec:nonlinear}
@@ -674,7 +682,7 @@ fit.lin2 = list()
 pred.lin2 = list()
 kf.error.lin2 = vector()
 for (i in 1:length(folds)) {
-  fit.lin2[[i]] = lm(crmrte~pctmin + log(prbconv) + log(polpc) + poly(wfed,3) + prbarr + wfed + pctmin:county + polpc:region + density:region + density:pctmin + density:pctymle + pctmin:region + region:wsta + pctymle:region, data=Crime.train[-folds[[i]],])
+  fit.lin2[[i]] = lm(crmrte~pctmin + log(prbconv) + log(polpc) + poly(wfed,3) + prbarr + wfed + wsta + pctymle + county + region + density + pctmin:county + polpc:region + density:region + density:pctmin + density:pctymle + pctmin:region + region:wsta + pctymle:region, data=Crime.train[-folds[[i]],])
   pred.lin2 = predict(fit.lin2[[i]], newdata=Crime.train[folds[[i]],])
   test.lin2.k = Crime.train[folds[[i]],]$crmrte
   kf.error.lin2[i] = mean(abs((pred.lin2 - test.lin2.k)/test.lin2.k))
@@ -693,7 +701,7 @@ fit.spl2 = list()
 pred.spl2 = list()
 kf.error.spl2 = vector()
 for (i in 1:length(folds)) {
-  fit.spl2[[i]] = lm(crmrte ~ ns(pctmin, knots=pctmin.knots) + log(prbconv) + log(polpc) + poly(wfed,3) + prbarr + wfed + pctmin:county + polpc:region + density:region + density:pctmin + density:pctymle + pctmin:region + region:wsta + pctymle:region, data=Crime.train[-folds[[i]],])
+  fit.spl2[[i]] = lm(crmrte ~ ns(pctmin, knots=pctmin.knots) + log(prbconv) + log(polpc) + poly(wfed,3) + wsta + pctymle + county + region + density + prbarr + wfed + pctmin:county + polpc:region + density:region + density:pctmin + density:pctymle + pctmin:region + region:wsta + pctymle:region, data=Crime.train[-folds[[i]],])
   pred.spl2 = predict(fit.spl2[[i]], newdata=Crime.train[folds[[i]],])
   test.spl2.k = Crime.train[folds[[i]],]$crmrte
   kf.error.spl2[i] = mean(abs((pred.spl2 - test.spl2.k)/test.spl2.k))
@@ -732,9 +740,9 @@ We created a linear regression model containing all the predictors, performed be
 ```{r}
 model = c("linear+best subset", "linear+interactions (LASSO)", "lasso results + splines")
 training_mse = c(train.errors.bestsubset,
-                 lasso_train,
+                 lasso_modified_train_mse,
                  mean((predict(fit.spl2[[best.index.spl2]], newdata=Crime.train, se.fit=TRUE)$fit-Crime.train$crmrte)^2))
-testing_mse = c(test.errors.bestsubset, lasso_rss, mse.spl2)
+testing_mse = c(test.errors.bestsubset, lasso_modified_test_mse, mse.spl2)
 kable(data.frame(model = model, trainingMSE = training_mse, testingMSE = testing_mse))
 ```
 
