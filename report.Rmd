@@ -129,7 +129,7 @@ In the boxplots above, we can see that the variables that may have a predictive 
 
 ```{r, echo=FALSE, out.width='350px', fig.align='center'}
 ggplot(Crime) + geom_bar(aes(x =factor(year), fill=crmrte_cat )) +
-  scale_fill_fivethirtyeight() + theme_fivethirtyeight() + labs(title='Crime Rate by Year', x = "Crime Rate")
+  scale_fill_fivethirtyeight() + theme_fivethirtyeight() + labs(title='Crime Rate by Year', x = "Year")
   
 #no significance difference
 ```
