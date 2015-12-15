@@ -531,11 +531,7 @@ We then chose a value of $\lambda$ within $1$ standard deviation from the optimu
 ```{R}
 lasso.mod.3=glmnet(xs_lasso[-test ,],ys_train,alpha=1,lambda=lasso.mod$lambda.1se)
 lasso_vars =  names(coef(lasso.mod.3)[,1][coef(lasso.mod.3)[,1]!=0])[-1]
-print(lasso_vars)
 ```
-
-The predictors are 
-
 
 Lasso yielded the following `r length(lasso_vars)` non-zero predictors:
 
@@ -543,16 +539,12 @@ Lasso yielded the following `r length(lasso_vars)` non-zero predictors:
 kable(split(lasso_vars, ceiling(length(lasso_vars) / 5)))
 ```
 
-
-with nonzero values, a reduction of `r round(((length(interaction.fit$coefficients) - length(lasso_vars)) / length(interaction.fit$coefficients))*100)`$\%$ with respect to the _stepwise AIC_. The _test error_ for this model is obtained using the same _k-folds_ generated for the first model:  
-
 ```{R}
 ys_lasso_pred = predict(lasso.mod.3, xs_lasso_test, s = lasso.mod$lambda.1se)
 lasso_rss = mean((ys_test - ys_lasso_pred)^2)
-lasso_rss
 ```
 
-and this error is `r (lasso_rss / test.errors.bestsubset) * 100`% of the training error of our original model using _best subset selection_.  Finally, we analysed the $L1$-norm between our estimated responses and the true model, which yielded a value of `r mean(abs((ys_test - ys_lasso_pred)/ ys_test))`, which is more than reasonable since it's below $30\%$. Consequently, the final set obtained in this section, after performing _linear_, _best subset selection_, _log_, _polynomial_ , _stepwise AIC_ and _Lasso_ yielded a model that will be used in the following sections for more complex fits that will derive in our final model.
+This means a reduction of `r round(((length(interaction.fit$coefficients) - length(lasso_vars)) / length(interaction.fit$coefficients))*100)`$\%$ with respect to the number of predictors returned by _stepwise AIC_. The _test error_ for this model is $`r lasso_rss`$ and this error is `r (lasso_rss / test.errors.bestsubset) * 100`% of the training error of our original model using _best subset selection_.  Finally, we analysed the $L1$-norm between our estimated responses and the true model, which yielded a value of `r mean(abs((ys_test - ys_lasso_pred)/ ys_test))`, which is more than reasonable since it's below $30\%$. Consequently, the final set obtained in this section, after performing _linear_, _best subset selection_, _log_, _polynomial_ , _stepwise AIC_ and _Lasso_ yielded a model that will be used in the following sections for more complex fits that will derive in our final model.
 
 ## Non-linear Modeling
 \label{sec:nonlinear}
