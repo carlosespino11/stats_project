@@ -334,7 +334,7 @@ lm.fit = lm(crmrte ~ ., data = Crime)
 summary(lm.fit)
 ```
 
-as the $R^2$ value is sufficiently high (`r summary(lm.fit)$r.squared`), we decided to perform `best subset selection` on the set of predictors. Although we are aware of the performance penalties of doing this for $p = 23$, the running times were considerably short and hence we decided to stick to this approach: 
+as the $R^2$ value is sufficiently high (as the $R^2$ value is sufficiently high ($`r summary(lm.fit)$r.squared`$), we decided to perform $`best subset selection`$ on the set of predictors. Although we are aware of the performance penalties of doing this for $p = 23$, the running times were considerably short and hence we decided to stick to this approach: 
 
 ```{R, cache = TRUE}
 bestsubset=regsubsets(y ~ ., data = data.frame(y = ys_train, x = xs_train), nvmax = p)
@@ -380,20 +380,6 @@ min_train_error.1 = val.train.errors[min_train]
 ```
 
 
-The cross-validation estimate of the training error is 
-
-```{R}
-min_train_error.1
-```
-
-The cross-validation error is 
-
-```{R}
-min_test_error.1
-```
-
-The actual training and test errors for this subset, on the original datasets, are
-
 ```{R}
 x_cols = colnames(xs, do.NULL = FALSE, prefix = "x.")
 colnames(xs) <- paste("x", x_cols, sep = ".")
@@ -404,13 +390,10 @@ pred_test.subset = as.matrix(xs_test[, x_cols %in% names(coefi)]) %*% coefi[name
 pred_train.subset = as.matrix(xs_train[, x_cols %in% names(coefi)]) %*% coefi[names(coefi) 
                                                                     %in% x_cols]
 train.errors.bestsubset = mean((ys_train - pred_train.subset)^2)
-train.errors.bestsubset 
 test.errors.bestsubset = mean((ys_test - pred_test.subset)^2)
-test.errors.bestsubset 
 ```
 
-
-both obtained when using the best subset with $k = 8$ predictors. The ratio between _testing _ and _training _ errors is (`r test.errors.bestsubset / train.errors.bestsubset`). Consequently, we can conclude that the predictors yielded by the subset generated using _best subset selection_ belong to a consistent model and, hence, can be used as a basis for non linear models. Nevertheless, we decided to run a linear fit with these predictors in order to check our conclusions: 
+The cross-validation estimate of the training error is $`r min_train_error.1`$ and the cross-validation error is $`r min_test_error.1`$. The actual training and test errors for this subset, on the original datasets, are $`r train.errors.bestsubset`$ and $`r test.errors.bestsubset`$, respectively. Both were obtained when using _best subset_ with $k = 8$ predictors. The ratio between _testing_ and _training_ errors is ($`r test.errors.bestsubset / train.errors.bestsubset`$). Consequently, we can conclude that the predictors yielded by the subset generated using _best subset selection_ belong to a consistent model and, hence, can be used as a basis for non linear models. Nevertheless, we decided to run a linear fit with these predictors in order to check our conclusions: 
 
 ```{R}
 lm.2.fit = lm(crmrte ~  prbarr + prbconv + polpc + density 
@@ -418,7 +401,7 @@ lm.2.fit = lm(crmrte ~  prbarr + prbconv + polpc + density
 summary(lm.2.fit)
 ```
 
-We can note that all coefficients are significant and the $R^2$, as expected, was reduced but only marginally (`r summary(lm.2.fit)$r.squared` versus `r summary(lm.fit)$r.squared`), which confirms that the model with this subset is indeed a good model. 
+We can note that all coefficients are significant and the $R^2$, as expected, was reduced but only marginally ($`r summary(lm.2.fit)$r.squared`$ versus $`r summary(lm.fit)$r.squared`$), which confirms that the model with this subset is indeed a good model. 
 
 Next, we proceeded to graphically analyse any nonlinearities between these predictors and the response, by looking at all pairwise plots: 
 
@@ -429,23 +412,19 @@ fitnames = c("prbarr" , "prbconv" , "polpc" , "density" ,
 ggpairs(Crime[names(Crime) %in% fitnames])
 ```
 
-It can be seen that the relationship between `crmrte` and `prbrarr`, `prbconv` and `polpc`, respectively, could be better explained by applying a _log_ to these predictors. Additionally, `wfed` has a nonlinear relationship with the response, which makes it suitable as a polynomial regression predictor. Consequently, we run a new, nonlinear model with these modified predictors: 
+It can be seen that the relationship between `crmrte` and `prbrarr`, `prbconv` and `polpc`, respectively, could be better explained by applying a _log_ to these predictors. Additionally, `wfed` and `pctmin` seem to have a nonlinear relationship with the response, which makes them suitable as polynomial regression predictors. Consequently, we run a new, nonlinear model with these modified predictors: 
 
 ```{R}
 lm.3.fit = lm(crmrte ~  log(prbarr) + log(prbconv) +
                 log(polpc) + density + as.factor(region) + 
-                pctmin + poly(wfed,3) + pctymle, data = Crime)
+                poly(pctmin,4) + poly(wfed,3) + pctymle, data = Crime)
 summary(lm.3.fit)
 ```
 
 ```{R}
 xs_predict = predict(lm.3.fit,xs_test)
-mean((ys_test - xs_predict)^2)
 ```
 
-The lack of significance of the polynomials for `wfed` and the increase in $R^2$ suggests that this model could possibly overfit. Hence, we removed the polynomials related to `wfed`, but kept the $log$ predictors as they have shown to be very significant.
-
-Next, we analysed all significant interactions between all original predictors and plugged them to our previous model. The number of interactions that we added to the model are: 
 ```{R}
 lm.4.fit = lm(crmrte ~  .*., data = Crime)
 ```
@@ -454,52 +433,28 @@ lm.4.fit = lm(crmrte ~  .*., data = Crime)
 ```{R}
 lm.5.fit = lm(crmrte ~  log(prbarr) + log(prbconv) +
                 log(polpc) + density + as.factor(region) + 
-                pctmin + poly(wfed,3) + pctymle + .*., data = Crime)
+                poly(wfed,3) + pctymle + .*., data = Crime)
 ```
 
-```{R}
-dim(summary(lm.4.fit)$coefficients)
-```
-
-The $R^2$ values for each fit are, respectively:
-
-```{R}
-summary(lm.4.fit)$r.squared
-```
-
-```{R}
-summary(lm.5.fit)$r.squared
-```
-
-We can see that both models are seriously overfitting, while the number of predictors has skyrocketed due to all interaction combinations. Even though it is tempting to keep only those interactions with a relevant significance value, since the removal of each of these predictors affects the overall model, we chose instead to refine it by using a _Stepwise Algorithm_ applying _AIC_ to decide. The resulting fit, which has the following number of coefficients: 
 
 ```{R, longanalysis, results='hide', cache = TRUE}
 interaction.fit = stepAIC(lm.5.fit)
 ```
-
-
-
-```{R}
-length(interaction.fit$coefficients)[1]
-```
-
-which means a reduction on the number of interactions by $30\%$, we proceeded to calculate both _training MSE_ and _testing MSE_: 
-
 
 ```{R}
 coefi = coef(interaction.fit)
 pred = as.matrix(xs_train[, x_cols %in% names(coefi)]) %*% coefi[names(coefi) 
                                                                 %in% x_cols]
 val.train.errors = mean((ys_train - pred)^2)
-val.train.errors
-
 pred = as.matrix(xs_test[, x_cols %in% names(coefi)]) %*% coefi[names(coefi) 
                                                                 %in% x_cols]
 val.test.errors = mean((ys_test - pred)^2)
-val.test.errors
+
 ```
 
-Here, we can see that the error rate remains close to one (`r val.test.errors / val.train.errors`) which still proves that this model holds. Now that we obtained a complex model consisting of linear variables, _log_ variables and _interaction_ variables, we will perform _Lasso_ in order to remove all interaction terms that are not significant, so that we arrive to a model easy to understand.
+The lack of significance of the polynomials for `wfed` and the increase in $R^2$ suggests that this model could possibly overfit. Hence, we removed the polynomials related to `wfed`, but kept the $log$ predictors as they have shown to be very significant. `pctmin` has a special behaviour, where we see that only the $3rd$ degree polynomial is used and seems less significant that the linear approach. Consequently, we decided to remove both the polynomial and the linear coefficients and re attach `pctmin` as a spline in \nameref{sec:nonlinear}. This updated model yielded a _testing MSE_ of $`r mean((ys_test - xs_predict)^2)`$, and an $R^2$ value of $`r summary(lm.3.fit)$r.squared`$.
+
+Next, we analysed all significant interactions between all original predictors and plugged them to our previous model. The number of interactions that we added to the model are $`r dim(summary(lm.4.fit)$coefficients)[1]`$ and the $R^2$ values for each fit are $`r summary(lm.4.fit)$r.squared`$ and $`r summary(lm.5.fit)$r.squared`$, respectively. Consequently, we can affirm that both models are seriously overfitting because the number of predictors has skyrocketed due to all interaction combinations. Even though it is tempting to keep only those interactions with a relevant significance value, since the removal of each of these predictors affects the overall model, we chose instead to refine it by using a _Stepwise Algorithm_ applying _AIC_ to decide. The resulting fit has $`r length(interaction.fit$coefficients)[1]`$ coefficients, which means a reduction on the number of interactions by $30\%$, we proceeded to calculate both _training MSE_ ($`r val.train.errors`$) and _testing MSE_ ($`r val.test.errors`$), yielding an error rate that remains close to one ($`r val.test.errors / val.train.errors`$) which still proves that this model holds. Now that we obtained a complex model consisting of linear variables, _log_ variables and _interaction_ variables, we will perform _Lasso_ in order to remove all interaction terms that are not significant, so that we arrive to a model easy to understand.
 
 ## Lasso Analysis
 With the resulting model from all our previous steps, we performed _k-fold cross validation_ using Lasso, in order to obtain the optimum value of $\lambda$ for our model. The plot showing the _cross-validation error_ as $\lambda$ increases is the following: 
@@ -575,7 +530,17 @@ lasso_vars =  names(coef(lasso.mod.3)[,1][coef(lasso.mod.3)[,1]!=0])[-1]
 print(lasso_vars)
 ```
 
-Lasso yielded `r length(lasso_vars)` predictors with nonzero values, a reduction of `r round(((length(interaction.fit$coefficients) - length(lasso_vars)) / length(interaction.fit$coefficients))*100)`$\%$ with respect to the _stepwise AIC_. The _test error_ for this model is obtained using the same _k-folds_ generated for the first model:  
+The predictors are 
+
+
+Lasso yielded the following `r length(lasso_vars)` non-zero predictors:
+
+```{R}
+kable(split(lasso_vars, ceiling(length(lasso_vars) / 5)))
+```
+
+
+with nonzero values, a reduction of `r round(((length(interaction.fit$coefficients) - length(lasso_vars)) / length(interaction.fit$coefficients))*100)`$\%$ with respect to the _stepwise AIC_. The _test error_ for this model is obtained using the same _k-folds_ generated for the first model:  
 
 ```{R}
 ys_lasso_pred = predict(lasso.mod.3, xs_lasso_test, s = lasso.mod$lambda.1se)
@@ -583,15 +548,7 @@ lasso_rss = mean((ys_test - ys_lasso_pred)^2)
 lasso_rss
 ```
 
-and this error is `r (lasso_rss / test.errors.bestsubset) * 100`% of the training error of our original model using _best subset selection_. 
-
-Finally, we analyse the $L1$-norm between our estimated responses and the true model: 
-
-```{R}
-mean(abs((ys_test - ys_lasso_pred)/ ys_test))
-```
-
-which yields a more than reasonable value, since it's below $30\%$. Consequently, the final set obtained in this section, after performing _linear_, _best subset selection_, _log_, _polynomial_ , _stepwise AIC_ and _Lasso_ yielded a model that will be used in the following sections for more complex fits that will derive in our final model.
+and this error is `r (lasso_rss / test.errors.bestsubset) * 100`% of the training error of our original model using _best subset selection_.  Finally, we analysed the $L1$-norm between our estimated responses and the true model, which yielded a value of `r mean(abs((ys_test - ys_lasso_pred)/ ys_test))`, which is more than reasonable since it's below $30\%$. Consequently, the final set obtained in this section, after performing _linear_, _best subset selection_, _log_, _polynomial_ , _stepwise AIC_ and _Lasso_ yielded a model that will be used in the following sections for more complex fits that will derive in our final model.
 
 ## Non-linear Modeling
 \label{sec:nonlinear}
